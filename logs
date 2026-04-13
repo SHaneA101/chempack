@@ -1,0 +1,24 @@
+const fs = require('fs');
+const path = require('path');
+
+const logFilePath = '/c:/Users/Admin/supabase-auth/logs';
+
+function logChange(action, details, timestamp = new Date().toISOString()) {
+    const logEntry = {
+        timestamp,
+        action,
+        details,
+    };
+
+    const logMessage = `[${timestamp}] ${action}: ${JSON.stringify(details)}\n`;
+
+    fs.appendFileSync(logFilePath, logMessage, 'utf8');
+    console.log('Logged:', logMessage);
+}
+
+// Usage examples:
+// logChange('AUTH_LOGIN', { userId: '123', method: 'email' });
+// logChange('DATA_UPDATE', { table: 'users', recordId: '456' });
+// logChange('ERROR', { code: 'ERR_001', message: 'Connection failed' });
+
+module.exports = { logChange };

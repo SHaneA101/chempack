@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Packhouse Sanitation | Supabase Auth</title>
+  <link rel="icon" type="image/png" href="images/unipacklogo.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="container">
+    <section class="card">
+      <div class="header-logo">
+        <img src="images/unipacklogo.png" alt="UniPack Logo" class="logo" />
+      </div>
+      <h1>Packhouse Sanitation Log</h1>
+      <div class="dashboard-content">
+        <p>Welcome, <span id="userEmail">loading...</span></p>
+        
+        <div style="margin-bottom: 20px;">
+          <button onclick="window.location.href='dashboard.html'">Back to Dashboard</button>
+          <button onclick="window.location.href='calendar.html'" style="margin-left: 10px;">View Calendar</button>
+          <button onclick="window.location.href='charts.html'" style="margin-left: 10px;">View Charts</button>
+        </div>
+
+        <h2>Log Packhouse Sanitation</h2>
+        <form id="sanitationForm">
+          <label for="sanitationDate">Date</label>
+          <input id="sanitationDate" type="date" required />
+
+          <label for="sanitationTime">Time</label>
+          <input id="sanitationTime" type="time" required />
+
+          <label for="sanitationType">Sanitation Type</label>
+          <select id="sanitationType" required>
+            <option value="">Select Sanitation Type</option>
+            <option value="Full Packhouse Sanitization">Full Packhouse Sanitization</option>
+            <option value="Equipment Sanitization">Equipment Sanitization</option>
+            <option value="Floor & Walls Sanitization">Floor & Walls Sanitization</option>
+            <option value="Partial Sanitization">Partial Sanitization</option>
+            <option value="Daily Clean">Daily Clean</option>
+            <option value="Other">Other</option>
+          </select>
+
+          <label for="areasSanitized">Areas Sanitized</label>
+          <textarea id="areasSanitized" placeholder="List areas sanitized (e.g., sorting area, packing line, storage)" rows="3"></textarea>
+
+          <label for="sanitationNotes">Additional Notes</label>
+          <textarea id="sanitationNotes" placeholder="Any additional details or observations" rows="3"></textarea>
+
+          <button type="submit">Log Sanitation & Send Alert</button>
+        </form>
+        
+        <button id="logoutButton">Sign Out</button>
+      </div>
+      <p id="status" class="message"></p>
+    </section>
+  </main>
+
+  <script type="module">
+    import { supabase } from './supabase.js';
+
+    const userEmail = document.getElementById('userEmail');
+    const logoutButton = document.getElementById('logoutButton');
+    const status = document.getElementById('status');
+    const sanitationForm = document.getElementById('sanitationForm');
+    const sanitationDate = document.getElementById('sanitationDate');
+
+    const WHATSAPP_SERVER_URL = 'http://localhost:3000/send-whatsapp';
+
+    function getDateFromNow() {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    async function loadUser() {
+      const { data, error } = await supabase.auth.getSession();
+      const user = data?.session?.user;
+      if (error || !user) {
+        window.location.href = 'index.html';
+        return;
+      }
+      userEmail.textContent = user.email ?? 'Unknown user';
+    }
+
+    function buildSanitationAlertMessage({ date, time, sanitationType, areasSanitized, notes }) {
+      let message = `🧹 Packhouse Sanitation Alert\n\n`;
+      message += `Date: ${date}\n`;
+      message += `Time: ${time}\n`;
+      message += `Type: ${sanitationType}\n`;
+      if (areasSanitized) {
+        message += `Areas: ${areasSanitized}\n`;
+      }
+      if (notes) {
+        message += `Notes: ${notes}\n`;
+      }
+      message += `\n✓ Sanitation logged and recorded.`;
+      return message;
+    }
+
+    async function sendWhatsAppNotification(message) {
+      try {
+        const response = await fetch(WHATSAPP_SERVER_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ message }),
+        });
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          return { success: false, error: payload.error || response.statusText };
+        }
+
+        return { success: true };
+      } catch (error) {
+        console.error('WhatsApp notification error:', error);
+        return { success: false, error: error.message || 'Request failed' };
+      }
+    }
+
+    sanitationDate.value = getDateFromNow();
+
+    sanitationForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      status.textContent = 'Logging sanitation...';
+      status.className = 'message';
+
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      const user = data?.session?.user;
+      if (sessionError || !user) {
+        status.textContent = 'Please log in first';
+        status.className = 'message error';
+        return;
+      }
+
+      const date = document.getElementById('sanitationDate').value;
+      const time = document.getElementById('sanitationTime').value;
+      const sanitationType = document.getElementById('sanitationType').value;
+      const areasSanitized = document.getElementById('areasSanitized').value;
+      const notes = document.getElementById('sanitationNotes').value;
+
+      const { error: insertError } = await supabase.from('packhouse_sanitation').insert([
+        {
+          user_id: user.id,
+          date,
+          time,
+          sanitation_type: sanitationType,
+          areas_sanitized: areasSanitized,
+          notes,
+        },
+      ]);
+
+      if (insertError) {
+        status.textContent = insertError.message;
+        status.className = 'message error';
+        return;
+      }
+
+      let notificationNote = '';
+      const message = buildSanitationAlertMessage({
+        date,
+        time,
+        sanitationType,
+        areasSanitized,
+        notes,
+      });
+
+      const { success, error: notifyError } = await sendWhatsAppNotification(message);
+      if (success) {
+        notificationNote = ' WhatsApp alert sent.';
+      } else {
+        notificationNote = ` WhatsApp alert failed: ${notifyError}`;
+        console.error('WhatsApp failure:', notifyError);
+      }
+
+      status.textContent = `Sanitation logged successfully!${notificationNote}`;
+      status.className = 'message success';
+      sanitationForm.reset();
+      sanitationDate.value = getDateFromNow();
+    });
+
+    logoutButton.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = 'index.html';
+    });
+
+    loadUser();
+  </script>
+</body>
+</html>

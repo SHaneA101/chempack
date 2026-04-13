@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard | Supabase Auth</title>
+  <link rel="icon" type="image/png" href="images/unipacklogo.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .threshold-config {
+      display: none;
+      margin-bottom: 18px;
+      padding: 14px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+    .threshold-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .threshold-row label {
+      min-width: 180px;
+      font-weight: 600;
+    }
+    .threshold-row input {
+      width: 120px;
+    }
+    .threshold-toggle {
+      display: inline-block;
+      margin-bottom: 16px;
+      padding: 8px 14px;
+      background: #2f6fdb;
+      border: none;
+      color: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .threshold-summary {
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      background: #eef4ff;
+      border: 1px solid #c2d4ff;
+      border-radius: 8px;
+      color: #1b2f58;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="card">
+      <div class="header-logo">
+        <img src="images/unipacklogo.png" alt="UniPack Logo" class="logo" />
+      </div>
+      <h1>Dashboard</h1>
+      <div class="dashboard-content">
+        <p>Welcome, <span id="userEmail">loading...</span></p>
+        
+        <div style="margin-bottom: 20px;">
+          <button onclick="window.location.href='calendar.html'">View Calendar</button>
+          <button onclick="window.location.href='charts.html'" style="margin-left: 10px;">View Charts</button>
+          <button onclick="window.location.href='equipment.html'" style="margin-left: 10px;">Equipment Checks</button>
+          <button onclick="window.location.href='sanitation.html'" style="margin-left: 10px;">Packhouse Sanitation</button>
+          <button onclick="window.location.href='equipment-faults.html'" style="margin-left: 10px;">Report Equipment Fault</button>
+          <button onclick="window.location.href='equipment-history.html'" style="margin-left: 10px;">Equipment Fault History</button>
+        </div>
+        
+        <h2>Record Activity & Temperature</h2>
+        <button type="button" class="threshold-toggle" id="toggleThresholdSettings">Show threshold settings</button>
+        <div class="threshold-summary" id="thresholdSummary"></div>
+        <div class="threshold-config" id="thresholdConfig">
+          <h3>Alert thresholds</h3>
+          <div class="threshold-row">
+            <label for="flooderMin">Flooder min / max</label>
+            <input id="flooderMin" type="number" step="0.1" placeholder="Min °C" required />
+            <input id="flooderMax" type="number" step="0.1" placeholder="Max °C" required />
+          </div>
+          <div class="threshold-row">
+            <label for="dryingMin">Drying tunnel min / max</label>
+            <input id="dryingMin" type="number" step="0.1" placeholder="Min °C" required />
+            <input id="dryingMax" type="number" step="0.1" placeholder="Max °C" required />
+          </div>
+          <div class="threshold-row">
+            <label for="waxMin">Wax tunnel min / max</label>
+            <input id="waxMin" type="number" step="0.1" placeholder="Min °C" required />
+            <input id="waxMax" type="number" step="0.1" placeholder="Max °C" required />
+          </div>
+          <div class="threshold-row">
+            <label for="chlorineMin">Chlorine level (ppm)</label>
+            <input id="chlorineMin" type="number" step="0.1" placeholder="Min ppm" required />
+            <input id="chlorineMax" type="number" step="0.1" placeholder="Max ppm" required />
+          </div>
+          <div class="threshold-row">
+            <label for="citrocideMin">Citrocide level (ppm)</label>
+            <input id="citrocideMin" type="number" step="0.1" placeholder="Min ppm" required />
+            <input id="citrocideMax" type="number" step="0.1" placeholder="Max ppm" required />
+          </div>
+        </div>
+        <form id="recordForm">
+          <label for="recordDate">Date</label>
+          <input id="recordDate" type="date" required />
+
+          <label for="recordTime">Time</label>
+          <input id="recordTime" type="time" required />
+
+          <label for="recordDay">Day</label>
+          <select id="recordDay" required>
+            <option value="">Select Day</option>
+            <option value="Monday">Monday</option>
+            <option value="Tuesday">Tuesday</option>
+            <option value="Wednesday">Wednesday</option>
+            <option value="Thursday">Thursday</option>
+            <option value="Friday">Friday</option>
+            <option value="Saturday">Saturday</option>
+            <option value="Sunday">Sunday</option>
+          </select>
+
+          <label for="flumesTemp">Flumes temperature</label>
+          <input id="flumesTemp" type="number" step="0.1" placeholder="°C" required />
+
+          <label for="flooderTemp">Flooder temperature</label>
+          <input id="flooderTemp" type="number" step="0.1" placeholder="°C" required />
+
+          <label for="dryingTemp">Drying tunnel temperature</label>
+          <input id="dryingTemp" type="number" step="0.1" placeholder="°C" required />
+
+          <label for="waxTemp">Wax tunnel temperature</label>
+          <input id="waxTemp" type="number" step="0.1" placeholder="°C" required />
+
+          <label for ="ChlorineLevel">Chlorine level (ppm)</label>
+          <input id="ChlorineLevel" type="number" step="0.1" placeholder="ppm" required />
+
+          <label for ="CitrocideLevel">Citrocide level (ppm)</label>
+          <input id="CitrocideLevel" type="number" step="0.1" placeholder="ppm" required />
+
+          <button type="submit">Save Record</button>
+        </form>
+
+        <button id="logoutButton">Sign Out</button>
+      </div>
+      <p id="status" class="message"></p>
+    </section>
+  </main>
+
+  <script type="module">
+    import { supabase } from './supabase.js';
+
+    const userEmail = document.getElementById('userEmail');
+    const logoutButton = document.getElementById('logoutButton');
+    const status = document.getElementById('status');
+    const recordForm = document.getElementById('recordForm');
+    const recordDate = document.getElementById('recordDate');
+    const recordDay = document.getElementById('recordDay');
+
+    const DEFAULT_TEMP_THRESHOLDS = {
+      flooder: { min: 20, max: 35 },
+      dryingTunnel: { min: 20, max: 65 },
+      waxTunnel: { min: 10, max: 30 },
+      chlorine: { min: 99, max: 120 },
+      citrocide: { min: 49, max: 60 },
+
+    };
+
+    const THRESHOLD_STORAGE_KEY = 'temperatureThresholds';
+    const WHATSAPP_SERVER_URL = 'http://localhost:3000/send-whatsapp';
+
+    function setWeekdayFromDate(dateValue) {
+      if (!dateValue) {
+        recordDay.value = '';
+        return;
+      }
+      const weekday = new Date(dateValue).toLocaleDateString('en-US', { weekday: 'long' });
+      recordDay.value = weekday;
+    }
+
+    function saveThresholds(thresholds) {
+      localStorage.setItem(THRESHOLD_STORAGE_KEY, JSON.stringify(thresholds));
+    }
+
+    function loadThresholds() {
+      const stored = localStorage.getItem(THRESHOLD_STORAGE_KEY);
+      if (!stored) {
+        return DEFAULT_TEMP_THRESHOLDS;
+      }
+      try {
+        const parsed = JSON.parse(stored);
+        return {
+          flooder: {
+            min: Number.isFinite(parsed?.flooder?.min) ? parsed.flooder.min : DEFAULT_TEMP_THRESHOLDS.flooder.min,
+            max: Number.isFinite(parsed?.flooder?.max) ? parsed.flooder.max : DEFAULT_TEMP_THRESHOLDS.flooder.max,
+          },
+          dryingTunnel: {
+            min: Number.isFinite(parsed?.dryingTunnel?.min) ? parsed.dryingTunnel.min : DEFAULT_TEMP_THRESHOLDS.dryingTunnel.min,
+            max: Number.isFinite(parsed?.dryingTunnel?.max) ? parsed.dryingTunnel.max : DEFAULT_TEMP_THRESHOLDS.dryingTunnel.max,
+          },
+          waxTunnel: {
+            min: Number.isFinite(parsed?.waxTunnel?.min) ? parsed.waxTunnel.min : DEFAULT_TEMP_THRESHOLDS.waxTunnel.min,
+            max: Number.isFinite(parsed?.waxTunnel?.max) ? parsed.waxTunnel.max : DEFAULT_TEMP_THRESHOLDS.waxTunnel.max,
+          },
+          chlorine: {
+            min: Number.isFinite(parsed?.chlorine?.min) ? parsed.chlorine.min : DEFAULT_TEMP_THRESHOLDS.chlorine.min,
+            max: Number.isFinite(parsed?.chlorine?.max) ? parsed.chlorine.max : DEFAULT_TEMP_THRESHOLDS.chlorine.max,
+          },
+          citrocide: {
+            min: Number.isFinite(parsed?.citrocide?.min) ? parsed.citrocide.min : DEFAULT_TEMP_THRESHOLDS.citrocide.min,
+            max: Number.isFinite(parsed?.citrocide?.max) ? parsed.citrocide.max : DEFAULT_TEMP_THRESHOLDS.citrocide.max,
+          },
+        };
+      } catch (error) {
+        return DEFAULT_TEMP_THRESHOLDS;
+      }
+    }
+
+    function populateThresholdFields(thresholds) {
+      document.getElementById('flooderMin').value = thresholds.flooder.min;
+      document.getElementById('flooderMax').value = thresholds.flooder.max;
+      document.getElementById('dryingMin').value = thresholds.dryingTunnel.min;
+      document.getElementById('dryingMax').value = thresholds.dryingTunnel.max;
+      document.getElementById('waxMin').value = thresholds.waxTunnel.min;
+      document.getElementById('waxMax').value = thresholds.waxTunnel.max;
+      document.getElementById('chlorineMin').value = thresholds.chlorine.min;
+      document.getElementById('chlorineMax').value = thresholds.chlorine.max;
+      document.getElementById('citrocideMin').value = thresholds.citrocide.min;
+      document.getElementById('citrocideMax').value = thresholds.citrocide.max;
+    }
+
+    function parseThresholdsFromFields() {
+      const flooderMin = parseFloat(document.getElementById('flooderMin').value);
+      const flooderMax = parseFloat(document.getElementById('flooderMax').value);
+      const dryingMin = parseFloat(document.getElementById('dryingMin').value);
+      const dryingMax = parseFloat(document.getElementById('dryingMax').value);
+      const waxMin = parseFloat(document.getElementById('waxMin').value);
+      const waxMax = parseFloat(document.getElementById('waxMax').value);
+      const chlorineMin = parseFloat(document.getElementById('chlorineMin').value);
+      const chlorineMax = parseFloat(document.getElementById('chlorineMax').value);
+      const citrocideMin = parseFloat(document.getElementById('citrocideMin').value);
+      const citrocideMax = parseFloat(document.getElementById('citrocideMax').value);
+
+      return {
+        flooder: {
+          min: Number.isFinite(flooderMin) ? flooderMin : DEFAULT_TEMP_THRESHOLDS.flooder.min,
+          max: Number.isFinite(flooderMax) ? flooderMax : DEFAULT_TEMP_THRESHOLDS.flooder.max,
+        },
+        dryingTunnel: {
+          min: Number.isFinite(dryingMin) ? dryingMin : DEFAULT_TEMP_THRESHOLDS.dryingTunnel.min,
+          max: Number.isFinite(dryingMax) ? dryingMax : DEFAULT_TEMP_THRESHOLDS.dryingTunnel.max,
+        },
+        waxTunnel: {
+          min: Number.isFinite(waxMin) ? waxMin : DEFAULT_TEMP_THRESHOLDS.waxTunnel.min,
+          max: Number.isFinite(waxMax) ? waxMax : DEFAULT_TEMP_THRESHOLDS.waxTunnel.max,
+        },
+        chlorine: {
+          min: Number.isFinite(chlorineMin) ? chlorineMin : DEFAULT_TEMP_THRESHOLDS.chlorine.min,
+          max: Number.isFinite(chlorineMax) ? chlorineMax : DEFAULT_TEMP_THRESHOLDS.chlorine.max,
+        },
+        citrocide: {
+          min: Number.isFinite(citrocideMin) ? citrocideMin : DEFAULT_TEMP_THRESHOLDS.citrocide.min,
+          max: Number.isFinite(citrocideMax) ? citrocideMax : DEFAULT_TEMP_THRESHOLDS.citrocide.max,
+        },
+      };
+    }
+
+    function getThresholdsFromForm() {
+      const thresholds = parseThresholdsFromFields();
+      saveThresholds(thresholds);
+      renderThresholdSummary(thresholds);
+      return thresholds;
+    }
+
+    function renderThresholdSummary(thresholds) {
+      const summary = `Current alert thresholds:\n
+Flooder: ${thresholds.flooder.min}°C to ${thresholds.flooder.max}°C\n
+Drying tunnel: ${thresholds.dryingTunnel.min}°C to ${thresholds.dryingTunnel.max}°C\n
+Wax tunnel: ${thresholds.waxTunnel.min}°C to ${thresholds.waxTunnel.max}°C` +
+`\nChlorine: ${thresholds.chlorine.min} ppm to ${thresholds.chlorine.max} ppm\nCitrocide: ${thresholds.citrocide.min} ppm to ${thresholds.citrocide.max} ppm`;
+
+
+
+
+      document.getElementById('thresholdSummary').textContent = summary;
+    }
+
+    function checkTemperatureThresholds({ flooderTemp, dryingTemp, waxTemp, chlorineLevel, citrocideLevel }, thresholds) {
+      const alerts = [];
+
+      if (flooderTemp < thresholds.flooder.min || flooderTemp > thresholds.flooder.max) {
+        alerts.push(
+          `Flooder temperature ${flooderTemp.toFixed(1)}°C is outside the allowed range (${thresholds.flooder.min}-${thresholds.flooder.max}°C).`
+        );
+      }
+      if (dryingTemp < thresholds.dryingTunnel.min || dryingTemp > thresholds.dryingTunnel.max) {
+        alerts.push(
+          `Drying tunnel temperature ${dryingTemp.toFixed(1)}°C is outside the allowed range (${thresholds.dryingTunnel.min}-${thresholds.dryingTunnel.max}°C).`
+        );
+      }
+      if (waxTemp < thresholds.waxTunnel.min || waxTemp > thresholds.waxTunnel.max) {
+        alerts.push(
+          `Wax tunnel temperature ${waxTemp.toFixed(1)}°C is outside the allowed range (${thresholds.waxTunnel.min}-${thresholds.waxTunnel.max}°C).`
+        );
+      }
+      if (chlorineLevel < thresholds.chlorine.min || chlorineLevel > thresholds.chlorine.max) {
+        alerts.push(
+          `Chlorine level ${chlorineLevel.toFixed(1)} ppm is outside the allowed range (${thresholds.chlorine.min}-${thresholds.chlorine.max} ppm).`
+        );
+      }
+      if (citrocideLevel < thresholds.citrocide.min || citrocideLevel > thresholds.citrocide.max) {
+        alerts.push(
+          `Citrocide level ${citrocideLevel.toFixed(1)} ppm is outside the allowed range (${thresholds.citrocide.min}-${thresholds.citrocide.max} ppm).`
+        );
+      }
+
+      return alerts;
+    }
+
+    function buildWhatsAppMessage(alerts, { date, time }) {
+      return `Temperature alert recorded on ${date} at ${time}:\n\n${alerts.join('\n')}\n\nPlease inspect the equipment immediately.`;
+    }
+
+    async function sendWhatsAppNotification(message) {
+      try {
+        const response = await fetch(WHATSAPP_SERVER_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ message }),
+        });
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          return { success: false, error: payload.error || response.statusText };
+        }
+
+        return { success: true };
+      } catch (error) {
+        console.error('WhatsApp notification error:', error);
+        return { success: false, error: error.message || 'Request failed' };
+      }
+    }
+
+    async function loadUser() {
+      const { data, error } = await supabase.auth.getSession();
+      const user = data?.session?.user;
+      if (error || !user) {
+        window.location.href = 'index.html';
+        return;
+      }
+      userEmail.textContent = user.email ?? 'Unknown user';
+    }
+
+    const thresholdToggle = document.getElementById('toggleThresholdSettings');
+    const thresholdConfig = document.getElementById('thresholdConfig');
+
+    thresholdToggle.addEventListener('click', () => {
+      const isHidden = thresholdConfig.style.display === 'none' || thresholdConfig.style.display === '';
+      thresholdConfig.style.display = isHidden ? 'block' : 'none';
+      thresholdToggle.textContent = isHidden ? 'Hide threshold settings' : 'Show threshold settings';
+    });
+
+    function initializeThresholdSettings() {
+      const thresholds = loadThresholds();
+      populateThresholdFields(thresholds);
+      renderThresholdSummary(thresholds);
+      thresholdConfig.style.display = 'none';
+      thresholdToggle.textContent = 'Show threshold settings';
+    }
+
+    function listenToThresholdFieldChanges() {
+      const fields = [
+        document.getElementById('flooderMin'),
+        document.getElementById('flooderMax'),
+        document.getElementById('dryingMin'),
+        document.getElementById('dryingMax'),
+        document.getElementById('waxMin'),
+        document.getElementById('waxMax'),
+        document.getElementById('chlorineMin'),
+        document.getElementById('chlorineMax'),
+        document.getElementById('citrocideMin'),
+        document.getElementById('citrocideMax'),
+      ];
+      fields.forEach((field) => {
+        field.addEventListener('input', () => {
+          const thresholds = parseThresholdsFromFields();
+          renderThresholdSummary(thresholds);
+        });
+      });
+    }
+
+    recordDate.addEventListener('change', () => {
+      setWeekdayFromDate(recordDate.value);
+    });
+
+    recordForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      status.textContent = 'Saving record...';
+      status.className = 'message';
+
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      const user = data?.session?.user;
+      if (sessionError || !user) {
+        status.textContent = 'Please log in first';
+        status.className = 'message error';
+        return;
+      }
+
+      const date = document.getElementById('recordDate').value;
+      const time = document.getElementById('recordTime').value;
+      const day = document.getElementById('recordDay').value;
+      const flumesTemp = parseFloat(document.getElementById('flumesTemp').value);
+      const flooderTemp = parseFloat(document.getElementById('flooderTemp').value);
+      const dryingTemp = parseFloat(document.getElementById('dryingTemp').value);
+      const waxTemp = parseFloat(document.getElementById('waxTemp').value);
+      const chlorineLevel = parseFloat(document.getElementById('ChlorineLevel').value);
+      const citrocideLevel = parseFloat(document.getElementById('CitrocideLevel').value);
+      const thresholds = getThresholdsFromForm();
+      const alerts = checkTemperatureThresholds({ flooderTemp, dryingTemp, waxTemp, chlorineLevel, citrocideLevel }, thresholds);
+
+      const { error: tempError } = await supabase.from('temperature_checks').insert([
+        {
+          user_id: user.id,
+          date,
+          time,
+          flumes_temp: flumesTemp,
+          flooder_temp: flooderTemp,
+          drying_tunnel_temp: dryingTemp,
+          wax_tunnel_temp: waxTemp,
+          chlorine_level: chlorineLevel,
+          citrocide_level: citrocideLevel,
+        },
+      ]);
+
+      if (tempError) {
+        status.textContent = tempError.message;
+        status.className = 'message error';
+        return;
+      }
+
+      const { error: activityError } = await supabase.from('activities').insert([
+        {
+          user_id: user.id,
+          date,
+          time,
+          day,
+        },
+      ]);
+
+      let notificationNote = '';
+      if (alerts.length > 0) {
+        const message = buildWhatsAppMessage(alerts, { date, time });
+        const { success, error: notifyError } = await sendWhatsAppNotification(message);
+        if (success) {
+          notificationNote = ' WhatsApp alert sent.';
+        } else {
+          notificationNote = ` WhatsApp alert failed: ${notifyError}`;
+          console.error('WhatsApp failure:', notifyError);
+        }
+      }
+
+      if (activityError) {
+        status.textContent = `Record saved, but calendar activity failed.${notificationNote}`;
+        status.className = 'message error';
+        console.error('Calendar activity error:', activityError);
+        return;
+      }
+
+      status.textContent = `Record saved and added to calendar!${notificationNote}`;
+      status.className = 'message success';
+      recordForm.reset();
+    });
+
+    logoutButton.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = 'index.html';
+    });
+
+    initializeThresholdSettings();
+    listenToThresholdFieldChanges();
+    loadUser();
+  </script>
+</body>
+</html>

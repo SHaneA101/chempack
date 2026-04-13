@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Historical Chart Data | Supabase Auth</title>
+  <link rel="icon" type="image/png" href="images/unipacklogo.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .chart-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .chart-card {
+      background: rgba(15, 23, 42, 0.96);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .chart-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .chart-controls select,
+    .chart-controls input {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(255, 255, 255, 0.06);
+      color: #f8fafc;
+      font-size: 0.9rem;
+    }
+
+    .chart-controls select {
+      min-width: 120px;
+    }
+
+    .chart-wrapper {
+      position: relative;
+      height: 400px;
+      margin-bottom: 20px;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    .data-table th,
+    .data-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .data-table th {
+      background: rgba(148, 163, 184, 0.1);
+      font-weight: bold;
+    }
+
+    .data-table tr:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .temp-value {
+      font-weight: bold;
+      color: #93c5fd;
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 40px;
+      color: #94a3b8;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="card">
+      <div class="header-logo">
+        <img src="images/unipacklogo.png" alt="UniPack Logo" class="logo" />
+      </div>
+      <h1>Historical Temperature Data</h1>
+
+      <div class="chart-container">
+        <div class="chart-card">
+          <div class="chart-header">
+            <h2>Temperature Trends</h2>
+            <div class="chart-controls">
+              <select id="chartType">
+                <option value="line">Line Chart</option>
+                <option value="bar">Bar Chart</option>
+              </select>
+              <select id="timeRange">
+                <option value="7">Last 7 days</option>
+                <option value="30">Last 30 days</option>
+                <option value="90">Last 90 days</option>
+                <option value="all">All time</option>
+              </select>
+            </div>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="temperatureChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h2>Recent Temperature Records</h2>
+          <div id="dataTableContainer">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Time</th>
+                  <th>Day</th>
+                  <th>Flumes (°C)</th>
+                  <th>Flooder (°C)</th>
+                  <th>Drying (°C)</th>
+                  <th>Wax (°C)</th>
+                </tr>
+              </thead>
+              <tbody id="dataTableBody">
+                <tr>
+                  <td colspan="7" class="no-data">Loading data...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px;">
+        <button onclick="window.location.href='dashboard.html'" style="margin-right: 10px;">Back to Dashboard</button>
+        <button onclick="window.location.href='calendar.html'" style="margin-right: 10px;">View Calendar</button>
+        <button id="logoutButton">Sign Out</button>
+      </div>
+
+      <p id="status" class="message"></p>
+    </section>
+  </main>
+
+  <script type="module">
+    import { supabase } from './supabase.js';
+
+    const logoutButton = document.getElementById('logoutButton');
+    const status = document.getElementById('status');
+    const chartTypeSelect = document.getElementById('chartType');
+    const timeRangeSelect = document.getElementById('timeRange');
+    const dataTableBody = document.getElementById('dataTableBody');
+
+    let temperatureChart;
+    let chartData = [];
+
+    async function checkAuth() {
+      const { data, error } = await supabase.auth.getSession();
+      if (error || !data.session) {
+        window.location.href = 'index.html';
+        return null;
+      }
+      return data.session.user;
+    }
+
+    async function loadTemperatureData() {
+      const user = await checkAuth();
+      if (!user) return;
+
+      status.textContent = 'Loading temperature data...';
+
+      const timeRange = timeRangeSelect.value;
+      let query = supabase
+        .from('temperature_checks')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: true })
+        .order('time', { ascending: true });
+
+      if (timeRange !== 'all') {
+        const days = parseInt(timeRange);
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+        query = query.gte('date', startDate.toISOString().split('T')[0]);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        status.textContent = error.message;
+        status.className = 'message error';
+        return;
+      }
+
+      chartData = data || [];
+      renderChart();
+      renderDataTable();
+      status.textContent = '';
+    }
+
+    function renderChart() {
+      const ctx = document.getElementById('temperatureChart').getContext('2d');
+
+      if (temperatureChart) {
+        temperatureChart.destroy();
+      }
+
+      const chartType = chartTypeSelect.value;
+      const labels = chartData.map(item => `${item.date} ${item.time}`);
+      const datasets = [
+        {
+          label: 'Flumes',
+          data: chartData.map(item => item.flumes_temp),
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          tension: 0.4,
+        },
+        {
+          label: 'Flooder',
+          data: chartData.map(item => item.flooder_temp),
+          borderColor: '#ef4444',
+          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+          tension: 0.4,
+        },
+        {
+          label: 'Drying Tunnel',
+          data: chartData.map(item => item.drying_tunnel_temp),
+          borderColor: '#10b981',
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+          tension: 0.4,
+        },
+        {
+          label: 'Wax Tunnel',
+          data: chartData.map(item => item.wax_tunnel_temp),
+          borderColor: '#f59e0b',
+          backgroundColor: 'rgba(245, 158, 11, 0.1)',
+          tension: 0.4,
+        },
+      ];
+
+      temperatureChart = new Chart(ctx, {
+        type: chartType,
+        data: {
+          labels,
+          datasets,
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+            },
+            title: {
+              display: true,
+              text: 'Temperature Readings Over Time',
+            },
+          },
+          scales: {
+            x: {
+              display: true,
+              title: {
+                display: true,
+                text: 'Date & Time',
+              },
+            },
+            y: {
+              display: true,
+              title: {
+                display: true,
+                text: 'Temperature (°C)',
+              },
+            },
+          },
+        },
+      });
+    }
+
+    function renderDataTable() {
+      if (chartData.length === 0) {
+        dataTableBody.innerHTML = '<tr><td colspan="7" class="no-data">No temperature data found. Add some records from the dashboard!</td></tr>';
+        return;
+      }
+
+      dataTableBody.innerHTML = chartData
+        .slice(-20) // Show last 20 records
+        .reverse() // Most recent first
+        .map(item => `
+          <tr>
+            <td>${new Date(item.date).toLocaleDateString()}</td>
+            <td>${item.time}</td>
+            <td>${new Date(item.date).toLocaleDateString('en-US', { weekday: 'long' })}</td>
+            <td><span class="temp-value">${item.flumes_temp}°C</span></td>
+            <td><span class="temp-value">${item.flooder_temp}°C</span></td>
+            <td><span class="temp-value">${item.drying_tunnel_temp}°C</span></td>
+            <td><span class="temp-value">${item.wax_tunnel_temp}°C</span></td>
+          </tr>
+        `).join('');
+    }
+
+    // Event listeners
+    chartTypeSelect.addEventListener('change', renderChart);
+    timeRangeSelect.addEventListener('change', loadTemperatureData);
+
+    logoutButton.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = 'index.html';
+    });
+
+    // Initialize
+    checkAuth().then(() => {
+      loadTemperatureData();
+    });
+  </script>
+</body>
+</html>

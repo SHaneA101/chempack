@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calendar | Supabase Auth</title>
+  <link rel="icon" type="image/png" href="images/unipacklogo.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .calendar-container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 0 10px;
+    }
+
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 50px;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(120px, 1fr));
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .day-header {
+      font-weight: bold;
+      text-align: center;
+      padding: 10px;
+      background: rgba(148, 163, 184, 0.1);
+      border-radius: 8px;
+    }
+
+    .calendar-day {
+      min-height: 80px;
+      padding: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      position: relative;
+    }
+
+    .calendar-day.empty {
+      background: transparent;
+      border: none;
+    }
+
+    .day-number {
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    .activity-item {
+      font-size: 0.8rem;
+      padding: 2px 4px;
+      margin: 2px 0;
+      background: #2563eb;
+      color: white;
+      border-radius: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .activity-item:hover {
+      background: #1d4ed8;
+    }
+
+    .month-nav {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 8px;
+      padding: 6px 10px;
+      color: #f8fafc;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .month-nav:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .current-month {
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+
+    .activities-list {
+      margin-top: 30px;
+    }
+
+    .activity-card {
+      background: rgba(15, 23, 42, 0.96);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    .activity-card h3 {
+      margin: 0 0 8px 0;
+      color: #93c5fd;
+    }
+
+    .activity-card p {
+      margin: 4px 0;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="card">
+      <div class="header-logo">
+        <img src="images/unipacklogo.png" alt="UniPack Logo" class="logo" />
+      </div>
+      <h1>Activity Calendar</h1>
+
+      <div class="calendar-container">
+        <div class="calendar-header">
+          <button id="prevMonth" class="month-nav">← Previous</button>
+          <div id="currentMonth" class="current-month">April 2026</div>
+          <button id="nextMonth" class="month-nav">Next →</button>
+        </div>
+
+        <div id="calendarGrid" class="calendar-grid">
+          <!-- Calendar days will be populated by JavaScript -->
+        </div>
+      </div>
+
+      <div class="activities-list">
+        <h2>Your Activities</h2>
+        <div id="activitiesList">
+          <!-- Activities will be populated by JavaScript -->
+        </div>
+      </div>
+
+      <div style="margin-top: 20px;">
+        <button onclick="window.location.href='dashboard.html'" style="margin-right: 10px;">Back to Dashboard</button>
+        <button id="logoutButton">Sign Out</button>
+      </div>
+
+      <p id="status" class="message"></p>
+    </section>
+  </main>
+
+  <script type="module">
+    import { supabase } from './supabase.js';
+
+    const calendarGrid = document.getElementById('calendarGrid');
+    const currentMonthDisplay = document.getElementById('currentMonth');
+    const activitiesList = document.getElementById('activitiesList');
+    const status = document.getElementById('status');
+    const logoutButton = document.getElementById('logoutButton');
+    const prevMonthBtn = document.getElementById('prevMonth');
+    const nextMonthBtn = document.getElementById('nextMonth');
+
+    let currentDate = new Date();
+
+    // Day names for calendar header
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    async function checkAuth() {
+      const { data, error } = await supabase.auth.getSession();
+      if (error || !data.session) {
+        window.location.href = 'index.html';
+        return null;
+      }
+      return data.session.user;
+    }
+
+    function renderCalendar() {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+
+      // Update month display
+      currentMonthDisplay.textContent = currentDate.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long'
+      });
+
+      // Clear previous calendar
+      calendarGrid.innerHTML = '';
+
+      // Add day headers
+      dayNames.forEach(day => {
+        const dayHeader = document.createElement('div');
+        dayHeader.className = 'day-header';
+        dayHeader.textContent = day;
+        calendarGrid.appendChild(dayHeader);
+      });
+
+      // Get first day of month and last day
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const startDate = new Date(firstDay);
+      startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+      // Generate calendar days
+      for (let i = 0; i < 42; i++) {
+        const dayDiv = document.createElement('div');
+        dayDiv.className = 'calendar-day';
+
+        const currentDay = new Date(startDate);
+        currentDay.setDate(startDate.getDate() + i);
+
+        if (currentDay.getMonth() !== month) {
+          dayDiv.classList.add('empty');
+        } else {
+          const dayNumber = document.createElement('div');
+          dayNumber.className = 'day-number';
+          dayNumber.textContent = currentDay.getDate();
+          dayDiv.appendChild(dayNumber);
+        }
+
+        calendarGrid.appendChild(dayDiv);
+      }
+    }
+
+    async function loadActivities() {
+      const user = await checkAuth();
+      if (!user) return;
+
+      status.textContent = 'Loading activities...';
+
+      const { data, error } = await supabase
+        .from('activities')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false });
+
+      if (error) {
+        status.textContent = error.message;
+        status.className = 'message error';
+        return;
+      }
+
+      status.textContent = '';
+      renderActivities(data);
+      renderCalendarActivities(data);
+    }
+
+    function renderActivities(activities) {
+      if (activities.length === 0) {
+        activitiesList.innerHTML = '<p>No activities found. Add some from the dashboard!</p>';
+        return;
+      }
+
+      activitiesList.innerHTML = activities.map(activity => `
+        <div class="activity-card">
+          <h3>${activity.day}, ${new Date(activity.date).toLocaleDateString()}</h3>
+          <p><strong>Time:</strong> ${activity.time}</p>
+          <p><strong>Added:</strong> ${new Date(activity.created_at).toLocaleString()}</p>
+        </div>
+      `).join('');
+    }
+
+    function renderCalendarActivities(activities) {
+      // Clear previous activities from calendar
+      document.querySelectorAll('.activity-item').forEach(item => item.remove());
+
+      // Group activities by date
+      const activitiesByDate = {};
+      activities.forEach(activity => {
+        const dateKey = activity.date;
+        if (!activitiesByDate[dateKey]) {
+          activitiesByDate[dateKey] = [];
+        }
+        activitiesByDate[dateKey].push(activity);
+      });
+
+      // Add activities to calendar days
+      const calendarDays = document.querySelectorAll('.calendar-day:not(.empty)');
+      calendarDays.forEach(dayDiv => {
+        const dayNumber = parseInt(dayDiv.querySelector('.day-number').textContent);
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        const dateKey = new Date(year, month, dayNumber).toISOString().split('T')[0];
+
+        const dayActivities = activitiesByDate[dateKey];
+        if (dayActivities) {
+          dayActivities.forEach(activity => {
+            const activityItem = document.createElement('div');
+            activityItem.className = 'activity-item';
+            activityItem.textContent = activity.time;
+            activityItem.title = `${activity.day} - ${activity.time}`;
+            dayDiv.appendChild(activityItem);
+          });
+        }
+      });
+    }
+
+    // Navigation handlers
+    prevMonthBtn.addEventListener('click', () => {
+      currentDate.setMonth(currentDate.getMonth() - 1);
+      renderCalendar();
+      loadActivities();
+    });
+
+    nextMonthBtn.addEventListener('click', () => {
+      currentDate.setMonth(currentDate.getMonth() + 1);
+      renderCalendar();
+      loadActivities();
+    });
+
+    logoutButton.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = 'index.html';
+    });
+
+    // Initialize
+    checkAuth().then(() => {
+      renderCalendar();
+      loadActivities();
+    });
+  </script>
+</body>
+</html>
