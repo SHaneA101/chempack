@@ -46,5 +46,5 @@ app.post('/send-whatsapp', async (req, res) => {
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
-  console.log(`WhatsApp notification server running on http://localhost:${port}`);
+  console.log(`WhatsApp notification server running onhttps://dailychem.netlify.app:${port}`);
 });
