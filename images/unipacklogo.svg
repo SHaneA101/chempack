@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="96" viewBox="0 0 320 96" role="img" aria-labelledby="title desc">
+  <title id="title">UniPack Logo</title>
+  <desc id="desc">UniPack wordmark with box icon.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="box" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="96" rx="16" fill="url(#bg)"/>
+  <g transform="translate(16 18)">
+    <rect x="0" y="0" width="60" height="60" rx="10" fill="url(#box)"/>
+    <path d="M12 22l18-10 18 10-18 10-18-10zm0 4l18 10 18-10v14l-18 10-18-10V26z" fill="#e0f2fe"/>
+  </g>
+  <text x="92" y="46" fill="#e2e8f0" font-family="Arial, sans-serif" font-size="34" font-weight="700" letter-spacing="0.5">UniPack</text>
+  <text x="93" y="68" fill="#93c5fd" font-family="Arial, sans-serif" font-size="14" letter-spacing="2">SAFETY DASHBOARD</text>
+</svg>
