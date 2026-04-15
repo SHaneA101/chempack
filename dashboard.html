@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Workspace | Supabase Auth</title>
+  <link rel="icon" type="image/png" href="images/unipacklogo.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    body {
+      align-items: flex-start;
+      justify-content: center;
+      padding: 24px 0;
+    }
+
+    .dashboard-shell {
+      width: min(1440px, calc(100% - 32px));
+      padding: 0;
+    }
+
+    .workspace-card {
+      padding: 28px;
+    }
+
+    .workspace-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .workspace-eyebrow {
+      margin: 0 0 8px;
+      color: #93c5fd;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .workspace-subtitle {
+      margin: 0;
+      color: #cbd5e1;
+      max-width: 760px;
+      line-height: 1.5;
+    }
+
+    .workspace-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .workspace-actions button {
+      width: auto;
+      min-width: 150px;
+      margin-top: 0;
+      padding-inline: 18px;
+    }
+
+    .secondary-button {
+      background: rgba(148, 163, 184, 0.16);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      color: #f8fafc;
+    }
+
+    .secondary-button:hover {
+      background: rgba(148, 163, 184, 0.26);
+    }
+
+    .workspace-tabs {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding: 6px 0 8px;
+      margin: 24px 0 18px;
+      scrollbar-width: thin;
+    }
+
+    .workspace-tab {
+      width: auto;
+      margin-top: 0;
+      padding: 12px 18px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      color: #cbd5e1;
+      white-space: nowrap;
+    }
+
+    .workspace-tab:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .workspace-tab.active {
+      background: #2563eb;
+      border-color: transparent;
+      color: #fff;
+    }
+
+    .workspace-note {
+      margin: 0 0 18px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(37, 99, 235, 0.12);
+      border: 1px solid rgba(96, 165, 250, 0.22);
+      color: #dbeafe;
+      line-height: 1.5;
+    }
+
+    .workspace-panels {
+      min-height: 720px;
+    }
+
+    .workspace-panel {
+      display: none;
+    }
+
+    .workspace-panel.active {
+      display: block;
+    }
+
+    .workspace-frame-shell,
+    .record-shell {
+      background: rgba(2, 6, 23, 0.28);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .record-shell {
+      padding: 24px;
+    }
+
+    .record-intro {
+      margin-bottom: 20px;
+    }
+
+    .record-intro h2 {
+      margin: 0 0 8px;
+      font-size: 1.5rem;
+    }
+
+    .record-intro p {
+      margin: 0;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+
+    .welcome-line {
+      margin-bottom: 12px;
+      font-size: 1rem;
+      color: #f8fafc;
+    }
+
+    .record-form {
+      display: grid;
+      gap: 20px;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 18px 16px;
+    }
+
+    .field-group {
+      min-width: 0;
+    }
+
+    .record-form button[type="submit"] {
+      width: 100%;
+      max-width: 320px;
+    }
+
+    .threshold-toggle {
+      display: inline-block;
+      width: auto;
+      margin-top: 0;
+      margin-bottom: 16px;
+      padding: 10px 16px;
+      background: #2f6fdb;
+      border: none;
+      color: #fff;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .threshold-config {
+      display: none;
+      margin-bottom: 18px;
+      padding: 18px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 14px;
+      background: rgba(15, 23, 42, 0.65);
+    }
+
+    .threshold-config h3 {
+      margin-top: 0;
+      margin-bottom: 18px;
+      color: #93c5fd;
+    }
+
+    .threshold-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .threshold-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .threshold-row label {
+      min-width: 220px;
+      margin: 0;
+      font-weight: 600;
+    }
+
+    .threshold-row input {
+      width: 140px;
+      margin: 0;
+    }
+
+    .threshold-summary {
+      margin-bottom: 16px;
+      padding: 14px 16px;
+      background: rgba(37, 99, 235, 0.12);
+      border: 1px solid rgba(96, 165, 250, 0.22);
+      border-radius: 14px;
+      color: #dbeafe;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      white-space: pre-line;
+    }
+
+    .workspace-loader {
+      padding: 18px 20px;
+      color: #cbd5e1;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+      background: rgba(15, 23, 42, 0.72);
+    }
+
+    .workspace-loader[hidden] {
+      display: none;
+    }
+
+    .workspace-frame {
+      width: 100%;
+      min-height: 720px;
+      border: 0;
+      display: block;
+      background: transparent;
+    }
+
+    @media (max-width: 900px) {
+      body {
+        padding: 16px 0;
+      }
+
+      .workspace-card {
+        padding: 22px;
+      }
+
+      .workspace-actions {
+        width: 100%;
+      }
+
+      .workspace-actions button {
+        flex: 1 1 180px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .workspace-card {
+        padding: 18px;
+      }
+
+      .record-shell {
+        padding: 18px;
+      }
+
+      .threshold-row label,
+      .threshold-row input {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .workspace-panels,
+      .workspace-frame {
+        min-height: 620px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="container dashboard-shell">
+    <section class="card workspace-card">
+      <div class="header-logo">
+        <img src="images/unipacklogo.png" alt="UniPack Logo" class="logo" />
+      </div>
+
+      <div class="workspace-header">
+        <div>
+          <p class="workspace-eyebrow">Daily Workspace</p>
+          <h1>Dashboard Workspace</h1>
+          <p id="workspaceSubtitle" class="workspace-subtitle">Checking your session and preparing your tabs...</p>
+        </div>
+
+        <div class="workspace-actions">
+          <button id="adminWorkspaceButton" type="button" class="secondary-button" hidden>Admin Workspace</button>
+          <button id="openCurrentPageButton" type="button" class="secondary-button" disabled>Dashboard Home</button>
+          <button id="logoutButton" type="button">Sign Out</button>
+        </div>
+      </div>
+
+      <div id="workspaceTabs" class="workspace-tabs" aria-label="Dashboard sections"></div>
+      <div id="workspaceNote" class="workspace-note">Choose a tab to work without leaving the dashboard.</div>
+
+      <div id="workspacePanels" class="workspace-panels">
+        <section id="panel-home" class="workspace-panel active" data-panel-key="home">
+          <div class="record-shell">
+            <div class="record-intro">
+              <p class="welcome-line">Welcome, <span id="userEmail">loading...</span></p>
+              <h2>Record Activity and Temperature</h2>
+              <p>Capture temperature readings, save the matching activity, and send alerts from one place.</p>
+            </div>
+
+            <button type="button" class="threshold-toggle" id="toggleThresholdSettings">Show threshold settings</button>
+
+            <div class="threshold-summary" id="thresholdSummary"></div>
+
+            <div class="threshold-config" id="thresholdConfig">
+              <h3>Alert thresholds</h3>
+
+              <div class="threshold-row">
+                <label for="flooderMin">Flooder min / max</label>
+                <input id="flooderMin" type="number" step="0.1" placeholder="Min &deg;C" required />
+                <input id="flooderMax" type="number" step="0.1" placeholder="Max &deg;C" required />
+              </div>
+
+              <div class="threshold-row">
+                <label for="dryingMin">Drying tunnel min / max</label>
+                <input id="dryingMin" type="number" step="0.1" placeholder="Min &deg;C" required />
+                <input id="dryingMax" type="number" step="0.1" placeholder="Max &deg;C" required />
+              </div>
+
+              <div class="threshold-row">
+                <label for="waxMin">Wax tunnel min / max</label>
+                <input id="waxMin" type="number" step="0.1" placeholder="Min &deg;C" required />
+                <input id="waxMax" type="number" step="0.1" placeholder="Max &deg;C" required />
+              </div>
+
+              <div class="threshold-row">
+                <label for="chlorineMin">Chlorine level (ppm)</label>
+                <input id="chlorineMin" type="number" step="0.1" placeholder="Min ppm" required />
+                <input id="chlorineMax" type="number" step="0.1" placeholder="Max ppm" required />
+              </div>
+
+              <div class="threshold-row">
+                <label for="citrocideMin">Citrocide level (ppm)</label>
+                <input id="citrocideMin" type="number" step="0.1" placeholder="Min ppm" required />
+                <input id="citrocideMax" type="number" step="0.1" placeholder="Max ppm" required />
+              </div>
+            </div>
+
+            <form id="recordForm" class="record-form">
+              <div class="field-grid">
+                <div class="field-group">
+                  <label for="recordDate">Date</label>
+                  <input id="recordDate" type="date" required />
+                </div>
+
+                <div class="field-group">
+                  <label for="recordTime">Time</label>
+                  <input id="recordTime" type="time" required />
+                </div>
+
+                <div class="field-group">
+                  <label for="recordDay">Day</label>
+                  <select id="recordDay" required>
+                    <option value="">Select Day</option>
+                    <option value="Monday">Monday</option>
+                    <option value="Tuesday">Tuesday</option>
+                    <option value="Wednesday">Wednesday</option>
+                    <option value="Thursday">Thursday</option>
+                    <option value="Friday">Friday</option>
+                    <option value="Saturday">Saturday</option>
+                    <option value="Sunday">Sunday</option>
+                  </select>
+                </div>
+
+                <div class="field-group">
+                  <label for="flumesTemp">Flumes temperature</label>
+                  <input id="flumesTemp" type="number" step="0.1" placeholder="&deg;C" required />
+                </div>
+
+                <div class="field-group">
+                  <label for="flooderTemp">Flooder temperature</label>
+                  <input id="flooderTemp" type="number" step="0.1" placeholder="&deg;C" required />
+                </div>
+
+                <div class="field-group">
+                  <label for="dryingTemp">Drying tunnel temperature</label>
+                  <input id="dryingTemp" type="number" step="0.1" placeholder="&deg;C" required />
+                </div>
+
+                <div class="field-group">
+                  <label for="waxTemp">Wax tunnel temperature</label>
+                  <input id="waxTemp" type="number" step="0.1" placeholder="&deg;C" required />
+                </div>
+
+                <div class="field-group">
+                  <label for="ChlorineLevel">Chlorine level (ppm)</label>
+                  <input id="ChlorineLevel" type="number" step="0.1" placeholder="ppm" required />
+                </div>
+
+                <div class="field-group">
+                  <label for="CitrocideLevel">Citrocide level (ppm)</label>
+                  <input id="CitrocideLevel" type="number" step="0.1" placeholder="ppm" required />
+                </div>
+              </div>
+
+              <button type="submit">Save Record</button>
+            </form>
+          </div>
+        </section>
+      </div>
+
+      <p id="status" class="message"></p>
+    </section>
+  </main>
+
+  <script type="module">
+    import { supabase } from './supabase.js';
+
+    const workspaceTabs = document.getElementById('workspaceTabs');
+    const workspacePanels = document.getElementById('workspacePanels');
+    const workspaceSubtitle = document.getElementById('workspaceSubtitle');
+    const workspaceNote = document.getElementById('workspaceNote');
+    const userEmail = document.getElementById('userEmail');
+    const adminWorkspaceButton = document.getElementById('adminWorkspaceButton');
+    const openCurrentPageButton = document.getElementById('openCurrentPageButton');
+    const logoutButton = document.getElementById('logoutButton');
+    const status = document.getElementById('status');
+    const recordForm = document.getElementById('recordForm');
+    const recordDate = document.getElementById('recordDate');
+    const recordDay = document.getElementById('recordDay');
+    const thresholdToggle = document.getElementById('toggleThresholdSettings');
+    const thresholdConfig = document.getElementById('thresholdConfig');
+
+    const workspacePages = [
+      {
+        key: 'home',
+        label: 'Home',
+        type: 'inline',
+        note: 'Use this tab to capture temperature readings, store the linked activity, and trigger alerts from one place.',
+      },
+      {
+        key: 'charts',
+        label: 'Charts',
+        type: 'frame',
+        src: 'charts.html',
+        loader: 'Loading charts...',
+        note: 'Historical temperature charts stay in the same workspace, so you can review trends without leaving the dashboard.',
+      },
+      {
+        key: 'calendar',
+        label: 'Calendar',
+        type: 'frame',
+        src: 'calendar.html',
+        loader: 'Loading calendar...',
+        note: 'Your activity calendar is embedded here so you can review dates and recent entries side by side with the rest of your tools.',
+      },
+      {
+        key: 'equipment',
+        label: 'Equipment Checks',
+        type: 'frame',
+        src: 'equipment.html',
+        loader: 'Loading equipment checks...',
+        note: 'Run the equipment checklist directly from this tab and keep the rest of the workspace one click away.',
+      },
+      {
+        key: 'sanitation',
+        label: 'Sanitation',
+        type: 'frame',
+        src: 'sanitation.html',
+        loader: 'Loading sanitation log...',
+        note: 'Packhouse sanitation logging stays available here without taking you away from the dashboard workspace.',
+      },
+      {
+        key: 'faults',
+        label: 'Fault Reports',
+        type: 'frame',
+        src: 'equipment-faults.html',
+        loader: 'Loading fault report form...',
+        note: 'Report faulty equipment, upload images, and send alerts from inside the same dashboard layout.',
+      },
+      {
+        key: 'history',
+        label: 'Fault History',
+        type: 'frame',
+        src: 'equipment-history.html',
+        loader: 'Loading fault history...',
+        note: 'Review reported equipment issues in the same workspace without bouncing between separate pages.',
+      },
+    ];
+
+    const pageByKey = new Map(workspacePages.map((page) => [page.key, page]));
+    const pageBySrc = new Map(
+      workspacePages
+        .filter((page) => page.src)
+        .map((page) => [page.src, page])
+    );
+
+    const EMBEDDED_STYLE_ID = 'dashboard-workspace-embedded-style';
+    const MIN_FRAME_HEIGHT = 620;
+
+    const DEFAULT_TEMP_THRESHOLDS = {
+      flooder: { min: 20, max: 35 },
+      dryingTunnel: { min: 20, max: 65 },
+      waxTunnel: { min: 10, max: 30 },
+      chlorine: { min: 99, max: 120 },
+      citrocide: { min: 49, max: 60 },
+    };
+
+    const THRESHOLD_STORAGE_KEY = 'temperatureThresholds';
+    const WHATSAPP_SERVER_URL = 'https://whatsapp-backend-rsug.onrender.com/send-whatsapp';
+
+    let currentUser = null;
+    let activeTabKey = null;
+    let activeHeightTimer = null;
+
+    function showStatus(message, tone = 'info') {
+      status.textContent = message;
+      if (tone === 'error') {
+        status.className = 'message error';
+        return;
+      }
+      if (tone === 'success') {
+        status.className = 'message success';
+        return;
+      }
+      status.className = 'message';
+    }
+
+    function getPageFromHash() {
+      const key = window.location.hash.replace('#', '');
+      return pageByKey.get(key) ? key : 'home';
+    }
+
+    function createWorkspaceShell() {
+      workspaceTabs.innerHTML = workspacePages
+        .map(
+          (page) => `
+            <button
+              type="button"
+              class="workspace-tab"
+              data-tab-key="${page.key}"
+              aria-controls="panel-${page.key}"
+            >
+              ${page.label}
+            </button>
+          `
+        )
+        .join('');
+
+      workspacePanels.insertAdjacentHTML(
+        'beforeend',
+        workspacePages
+          .filter((page) => page.type === 'frame')
+          .map(
+            (page) => `
+              <section id="panel-${page.key}" class="workspace-panel" data-panel-key="${page.key}">
+                <div class="workspace-frame-shell">
+                  <div class="workspace-loader">${page.loader}</div>
+                  <iframe
+                    class="workspace-frame"
+                    data-frame-key="${page.key}"
+                    title="${page.label}"
+                    loading="lazy"
+                  ></iframe>
+                </div>
+              </section>
+            `
+          )
+          .join('')
+      );
+    }
+
+    async function checkAuth() {
+      const { data, error } = await supabase.auth.getSession();
+      if (error || !data.session) {
+        window.location.href = 'index.html';
+        return null;
+      }
+      return data.session.user;
+    }
+
+    async function resolveUserRole(user) {
+      const metadataRole = user?.user_metadata?.role || user?.app_metadata?.role;
+
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (!error && profile?.role) {
+          return profile.role;
+        }
+      } catch (error) {
+        console.warn('Unable to load role from profiles table.', error);
+      }
+
+      return metadataRole || 'user';
+    }
+
+    function setWeekdayFromDate(dateValue) {
+      if (!dateValue) {
+        recordDay.value = '';
+        return;
+      }
+
+      const weekday = new Date(dateValue).toLocaleDateString('en-US', { weekday: 'long' });
+      recordDay.value = weekday;
+    }
+
+    function saveThresholds(thresholds) {
+      localStorage.setItem(THRESHOLD_STORAGE_KEY, JSON.stringify(thresholds));
+    }
+
+    function loadThresholds() {
+      const stored = localStorage.getItem(THRESHOLD_STORAGE_KEY);
+      if (!stored) {
+        return DEFAULT_TEMP_THRESHOLDS;
+      }
+
+      try {
+        const parsed = JSON.parse(stored);
+        return {
+          flooder: {
+            min: Number.isFinite(parsed?.flooder?.min) ? parsed.flooder.min : DEFAULT_TEMP_THRESHOLDS.flooder.min,
+            max: Number.isFinite(parsed?.flooder?.max) ? parsed.flooder.max : DEFAULT_TEMP_THRESHOLDS.flooder.max,
+          },
+          dryingTunnel: {
+            min: Number.isFinite(parsed?.dryingTunnel?.min) ? parsed.dryingTunnel.min : DEFAULT_TEMP_THRESHOLDS.dryingTunnel.min,
+            max: Number.isFinite(parsed?.dryingTunnel?.max) ? parsed.dryingTunnel.max : DEFAULT_TEMP_THRESHOLDS.dryingTunnel.max,
+          },
+          waxTunnel: {
+            min: Number.isFinite(parsed?.waxTunnel?.min) ? parsed.waxTunnel.min : DEFAULT_TEMP_THRESHOLDS.waxTunnel.min,
+            max: Number.isFinite(parsed?.waxTunnel?.max) ? parsed.waxTunnel.max : DEFAULT_TEMP_THRESHOLDS.waxTunnel.max,
+          },
+          chlorine: {
+            min: Number.isFinite(parsed?.chlorine?.min) ? parsed.chlorine.min : DEFAULT_TEMP_THRESHOLDS.chlorine.min,
+            max: Number.isFinite(parsed?.chlorine?.max) ? parsed.chlorine.max : DEFAULT_TEMP_THRESHOLDS.chlorine.max,
+          },
+          citrocide: {
+            min: Number.isFinite(parsed?.citrocide?.min) ? parsed.citrocide.min : DEFAULT_TEMP_THRESHOLDS.citrocide.min,
+            max: Number.isFinite(parsed?.citrocide?.max) ? parsed.citrocide.max : DEFAULT_TEMP_THRESHOLDS.citrocide.max,
+          },
+        };
+      } catch (error) {
+        return DEFAULT_TEMP_THRESHOLDS;
+      }
+    }
+
+    function populateThresholdFields(thresholds) {
+      document.getElementById('flooderMin').value = thresholds.flooder.min;
+      document.getElementById('flooderMax').value = thresholds.flooder.max;
+      document.getElementById('dryingMin').value = thresholds.dryingTunnel.min;
+      document.getElementById('dryingMax').value = thresholds.dryingTunnel.max;
+      document.getElementById('waxMin').value = thresholds.waxTunnel.min;
+      document.getElementById('waxMax').value = thresholds.waxTunnel.max;
+      document.getElementById('chlorineMin').value = thresholds.chlorine.min;
+      document.getElementById('chlorineMax').value = thresholds.chlorine.max;
+      document.getElementById('citrocideMin').value = thresholds.citrocide.min;
+      document.getElementById('citrocideMax').value = thresholds.citrocide.max;
+    }
+
+    function parseThresholdsFromFields() {
+      const flooderMin = parseFloat(document.getElementById('flooderMin').value);
+      const flooderMax = parseFloat(document.getElementById('flooderMax').value);
+      const dryingMin = parseFloat(document.getElementById('dryingMin').value);
+      const dryingMax = parseFloat(document.getElementById('dryingMax').value);
+      const waxMin = parseFloat(document.getElementById('waxMin').value);
+      const waxMax = parseFloat(document.getElementById('waxMax').value);
+      const chlorineMin = parseFloat(document.getElementById('chlorineMin').value);
+      const chlorineMax = parseFloat(document.getElementById('chlorineMax').value);
+      const citrocideMin = parseFloat(document.getElementById('citrocideMin').value);
+      const citrocideMax = parseFloat(document.getElementById('citrocideMax').value);
+
+      return {
+        flooder: {
+          min: Number.isFinite(flooderMin) ? flooderMin : DEFAULT_TEMP_THRESHOLDS.flooder.min,
+          max: Number.isFinite(flooderMax) ? flooderMax : DEFAULT_TEMP_THRESHOLDS.flooder.max,
+        },
+        dryingTunnel: {
+          min: Number.isFinite(dryingMin) ? dryingMin : DEFAULT_TEMP_THRESHOLDS.dryingTunnel.min,
+          max: Number.isFinite(dryingMax) ? dryingMax : DEFAULT_TEMP_THRESHOLDS.dryingTunnel.max,
+        },
+        waxTunnel: {
+          min: Number.isFinite(waxMin) ? waxMin : DEFAULT_TEMP_THRESHOLDS.waxTunnel.min,
+          max: Number.isFinite(waxMax) ? waxMax : DEFAULT_TEMP_THRESHOLDS.waxTunnel.max,
+        },
+        chlorine: {
+          min: Number.isFinite(chlorineMin) ? chlorineMin : DEFAULT_TEMP_THRESHOLDS.chlorine.min,
+          max: Number.isFinite(chlorineMax) ? chlorineMax : DEFAULT_TEMP_THRESHOLDS.chlorine.max,
+        },
+        citrocide: {
+          min: Number.isFinite(citrocideMin) ? citrocideMin : DEFAULT_TEMP_THRESHOLDS.citrocide.min,
+          max: Number.isFinite(citrocideMax) ? citrocideMax : DEFAULT_TEMP_THRESHOLDS.citrocide.max,
+        },
+      };
+    }
+
+    function renderThresholdSummary(thresholds) {
+      const summary =
+        `Current alert thresholds:\n\n` +
+        `Flooder: ${thresholds.flooder.min}\u00B0C to ${thresholds.flooder.max}\u00B0C\n` +
+        `Drying tunnel: ${thresholds.dryingTunnel.min}\u00B0C to ${thresholds.dryingTunnel.max}\u00B0C\n` +
+        `Wax tunnel: ${thresholds.waxTunnel.min}\u00B0C to ${thresholds.waxTunnel.max}\u00B0C\n` +
+        `Chlorine: ${thresholds.chlorine.min} ppm to ${thresholds.chlorine.max} ppm\n` +
+        `Citrocide: ${thresholds.citrocide.min} ppm to ${thresholds.citrocide.max} ppm`;
+
+      document.getElementById('thresholdSummary').textContent = summary;
+    }
+
+    function getThresholdsFromForm() {
+      const thresholds = parseThresholdsFromFields();
+      saveThresholds(thresholds);
+      renderThresholdSummary(thresholds);
+      return thresholds;
+    }
+
+    function checkTemperatureThresholds({ flooderTemp, dryingTemp, waxTemp, chlorineLevel, citrocideLevel }, thresholds) {
+      const alerts = [];
+
+      if (flooderTemp < thresholds.flooder.min || flooderTemp > thresholds.flooder.max) {
+        alerts.push(
+          `Flooder temperature ${flooderTemp.toFixed(1)}\u00B0C is outside the allowed range (${thresholds.flooder.min}-${thresholds.flooder.max}\u00B0C).`
+        );
+      }
+      if (dryingTemp < thresholds.dryingTunnel.min || dryingTemp > thresholds.dryingTunnel.max) {
+        alerts.push(
+          `Drying tunnel temperature ${dryingTemp.toFixed(1)}\u00B0C is outside the allowed range (${thresholds.dryingTunnel.min}-${thresholds.dryingTunnel.max}\u00B0C).`
+        );
+      }
+      if (waxTemp < thresholds.waxTunnel.min || waxTemp > thresholds.waxTunnel.max) {
+        alerts.push(
+          `Wax tunnel temperature ${waxTemp.toFixed(1)}\u00B0C is outside the allowed range (${thresholds.waxTunnel.min}-${thresholds.waxTunnel.max}\u00B0C).`
+        );
+      }
+      if (chlorineLevel < thresholds.chlorine.min || chlorineLevel > thresholds.chlorine.max) {
+        alerts.push(
+          `Chlorine level ${chlorineLevel.toFixed(1)} ppm is outside the allowed range (${thresholds.chlorine.min}-${thresholds.chlorine.max} ppm).`
+        );
+      }
+      if (citrocideLevel < thresholds.citrocide.min || citrocideLevel > thresholds.citrocide.max) {
+        alerts.push(
+          `Citrocide level ${citrocideLevel.toFixed(1)} ppm is outside the allowed range (${thresholds.citrocide.min}-${thresholds.citrocide.max} ppm).`
+        );
+      }
+
+      return alerts;
+    }
+
+    function buildWhatsAppMessage(alerts, { date, time }) {
+      return `Temperature alert recorded on ${date} at ${time}:\n\n${alerts.join('\n')}\n\nPlease inspect the equipment immediately.`;
+    }
+
+    async function sendWhatsAppNotification(message) {
+      try {
+        const response = await fetch(WHATSAPP_SERVER_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ message }),
+        });
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          return { success: false, error: payload.error || response.statusText };
+        }
+
+        return { success: true };
+      } catch (error) {
+        console.error('WhatsApp notification error:', error);
+        return { success: false, error: error.message || 'Request failed' };
+      }
+    }
+
+    function initializeThresholdSettings() {
+      const thresholds = loadThresholds();
+      populateThresholdFields(thresholds);
+      renderThresholdSummary(thresholds);
+      thresholdConfig.style.display = 'none';
+      thresholdToggle.textContent = 'Show threshold settings';
+    }
+
+    function listenToThresholdFieldChanges() {
+      const fields = [
+        document.getElementById('flooderMin'),
+        document.getElementById('flooderMax'),
+        document.getElementById('dryingMin'),
+        document.getElementById('dryingMax'),
+        document.getElementById('waxMin'),
+        document.getElementById('waxMax'),
+        document.getElementById('chlorineMin'),
+        document.getElementById('chlorineMax'),
+        document.getElementById('citrocideMin'),
+        document.getElementById('citrocideMax'),
+      ];
+
+      fields.forEach((field) => {
+        field.addEventListener('input', () => {
+          const thresholds = parseThresholdsFromFields();
+          renderThresholdSummary(thresholds);
+        });
+      });
+    }
+
+    function getPanelElements(key) {
+      const panel = document.querySelector(`[data-panel-key="${key}"]`);
+      return {
+        panel,
+        frame: panel?.querySelector('iframe'),
+        loader: panel?.querySelector('.workspace-loader'),
+      };
+    }
+
+    function startHeightSync() {
+      if (activeHeightTimer) {
+        window.clearInterval(activeHeightTimer);
+      }
+
+      const activePage = pageByKey.get(activeTabKey);
+      if (!activePage || activePage.type !== 'frame') {
+        return;
+      }
+
+      activeHeightTimer = window.setInterval(syncActiveFrameHeight, 700);
+      syncActiveFrameHeight();
+    }
+
+    function syncActiveFrameHeight() {
+      const activePage = pageByKey.get(activeTabKey);
+      if (!activePage || activePage.type !== 'frame') {
+        return;
+      }
+
+      const activeFrame = document.querySelector(`iframe[data-frame-key="${activeTabKey}"]`);
+      if (!activeFrame || !activeFrame.contentDocument) {
+        return;
+      }
+
+      try {
+        const doc = activeFrame.contentDocument;
+        const bodyHeight = doc.body ? doc.body.scrollHeight : 0;
+        const documentHeight = doc.documentElement ? doc.documentElement.scrollHeight : 0;
+        const nextHeight = Math.max(bodyHeight, documentHeight, MIN_FRAME_HEIGHT);
+
+        activeFrame.style.height = `${nextHeight}px`;
+      } catch (error) {
+        console.warn('Unable to resize embedded frame.', error);
+      }
+    }
+
+    function injectEmbeddedStyles(frame) {
+      const doc = frame.contentDocument;
+      if (!doc || doc.getElementById(EMBEDDED_STYLE_ID)) {
+        return;
+      }
+
+      const style = doc.createElement('style');
+      style.id = EMBEDDED_STYLE_ID;
+      style.textContent = `
+        body {
+          display: block !important;
+          min-height: auto !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          align-items: stretch !important;
+          justify-content: flex-start !important;
+          background: transparent !important;
+        }
+
+        main.container,
+        .container {
+          width: 100% !important;
+          max-width: none !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+
+        .card {
+          background: transparent !important;
+          border: 0 !important;
+          box-shadow: none !important;
+          margin: 0 !important;
+        }
+
+        .header-logo,
+        #logoutButton,
+        main.container > section.card > div[style*="margin-top: 20px"],
+        .dashboard-content > div[style*="margin-bottom: 20px"],
+        .dashboard-content > p:first-child {
+          display: none !important;
+        }
+      `;
+
+      doc.head.appendChild(style);
+    }
+
+    function handleEmbeddedNavigation(event) {
+      const clickable = event.target.closest('a[href], button[onclick]');
+      if (!clickable) {
+        return;
+      }
+
+      let targetPage = null;
+
+      if (clickable.matches('a[href]')) {
+        const href = clickable.getAttribute('href');
+        if (!href || href.startsWith('#') || href.startsWith('javascript:')) {
+          return;
+        }
+
+        try {
+          const targetUrl = new URL(href, window.location.href);
+          targetPage = targetUrl.pathname.split('/').pop();
+        } catch (error) {
+          return;
+        }
+      } else {
+        const onclickValue = clickable.getAttribute('onclick') || '';
+        const hrefMatch = onclickValue.match(/['"]([^'"]+\.html(?:\?[^'"]*)?)['"]/i);
+        if (hrefMatch) {
+          targetPage = hrefMatch[1].split('?')[0];
+        }
+      }
+
+      if (!targetPage) {
+        return;
+      }
+
+      if (targetPage === 'dashboard.html') {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        activateTab('home');
+        return;
+      }
+
+      const workspacePage = pageBySrc.get(targetPage);
+      if (workspacePage) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        activateTab(workspacePage.key);
+      }
+    }
+
+    function wireEmbeddedFrame(frame) {
+      const doc = frame.contentDocument;
+      if (!doc || doc.documentElement.dataset.dashboardWorkspaceBound === 'true') {
+        return;
+      }
+
+      doc.documentElement.dataset.dashboardWorkspaceBound = 'true';
+      doc.addEventListener('click', handleEmbeddedNavigation, true);
+    }
+
+    function setActiveWorkspaceCopy(page) {
+      workspaceNote.textContent = page.note;
+
+      if (page.type === 'inline') {
+        openCurrentPageButton.disabled = true;
+        openCurrentPageButton.textContent = 'Dashboard Home';
+        openCurrentPageButton.onclick = null;
+        return;
+      }
+
+      openCurrentPageButton.disabled = false;
+      openCurrentPageButton.textContent = `Open ${page.label}`;
+      openCurrentPageButton.onclick = () => {
+        window.location.href = page.src;
+      };
+    }
+
+    function markFrameLoaded(key) {
+      const { loader } = getPanelElements(key);
+      if (loader) {
+        loader.hidden = true;
+      }
+    }
+
+    function ensurePanelLoaded(key) {
+      const page = pageByKey.get(key);
+      const { frame } = getPanelElements(key);
+
+      if (!page || page.type !== 'frame' || !frame || frame.dataset.loaded === 'true') {
+        return;
+      }
+
+      frame.addEventListener('load', () => {
+        try {
+          const currentPath = frame.contentWindow?.location?.pathname?.split('/').pop();
+          if (currentPath === 'index.html') {
+            window.location.href = 'index.html';
+            return;
+          }
+        } catch (error) {
+          console.warn('Unable to inspect embedded frame location.', error);
+        }
+
+        injectEmbeddedStyles(frame);
+        wireEmbeddedFrame(frame);
+        markFrameLoaded(key);
+        syncActiveFrameHeight();
+      });
+
+      frame.dataset.loaded = 'true';
+      frame.src = page.src;
+    }
+
+    function activateTab(key, updateHash = true) {
+      const page = pageByKey.get(key);
+      if (!page) {
+        return;
+      }
+
+      activeTabKey = key;
+
+      document.querySelectorAll('.workspace-tab').forEach((button) => {
+        button.classList.toggle('active', button.dataset.tabKey === key);
+      });
+
+      document.querySelectorAll('.workspace-panel').forEach((panel) => {
+        panel.classList.toggle('active', panel.dataset.panelKey === key);
+      });
+
+      setActiveWorkspaceCopy(page);
+      ensurePanelLoaded(key);
+      startHeightSync();
+
+      if (updateHash) {
+        history.replaceState(null, '', `#${key}`);
+      }
+    }
+
+    thresholdToggle.addEventListener('click', () => {
+      const isHidden = thresholdConfig.style.display === 'none' || thresholdConfig.style.display === '';
+      thresholdConfig.style.display = isHidden ? 'block' : 'none';
+      thresholdToggle.textContent = isHidden ? 'Hide threshold settings' : 'Show threshold settings';
+    });
+
+    recordDate.addEventListener('change', () => {
+      setWeekdayFromDate(recordDate.value);
+    });
+
+    recordForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      showStatus('Saving record...');
+
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      const user = data?.session?.user;
+      if (sessionError || !user) {
+        showStatus('Please log in first', 'error');
+        return;
+      }
+
+      const date = document.getElementById('recordDate').value;
+      const time = document.getElementById('recordTime').value;
+      const day = document.getElementById('recordDay').value;
+      const flumesTemp = parseFloat(document.getElementById('flumesTemp').value);
+      const flooderTemp = parseFloat(document.getElementById('flooderTemp').value);
+      const dryingTemp = parseFloat(document.getElementById('dryingTemp').value);
+      const waxTemp = parseFloat(document.getElementById('waxTemp').value);
+      const chlorineLevel = parseFloat(document.getElementById('ChlorineLevel').value);
+      const citrocideLevel = parseFloat(document.getElementById('CitrocideLevel').value);
+      const thresholds = getThresholdsFromForm();
+      const alerts = checkTemperatureThresholds(
+        { flooderTemp, dryingTemp, waxTemp, chlorineLevel, citrocideLevel },
+        thresholds
+      );
+
+      const { error: tempError } = await supabase.from('temperature_checks').insert([
+        {
+          user_id: user.id,
+          date,
+          time,
+          flumes_temp: flumesTemp,
+          flooder_temp: flooderTemp,
+          drying_tunnel_temp: dryingTemp,
+          wax_tunnel_temp: waxTemp,
+          chlorine_level: chlorineLevel,
+          citrocide_level: citrocideLevel,
+        },
+      ]);
+
+      if (tempError) {
+        showStatus(tempError.message, 'error');
+        return;
+      }
+
+      const { error: activityError } = await supabase.from('activities').insert([
+        {
+          user_id: user.id,
+          date,
+          time,
+          day,
+        },
+      ]);
+
+      let notificationNote = '';
+      if (alerts.length > 0) {
+        const message = buildWhatsAppMessage(alerts, { date, time });
+        const { success, error: notifyError } = await sendWhatsAppNotification(message);
+        if (success) {
+          notificationNote = ' WhatsApp alert sent.';
+        } else {
+          notificationNote = ` WhatsApp alert failed: ${notifyError}`;
+          console.error('WhatsApp failure:', notifyError);
+        }
+      }
+
+      if (activityError) {
+        showStatus(`Record saved, but calendar activity failed.${notificationNote}`, 'error');
+        console.error('Calendar activity error:', activityError);
+        return;
+      }
+
+      showStatus(`Record saved and added to calendar!${notificationNote}`, 'success');
+      recordForm.reset();
+    });
+
+    logoutButton.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = 'index.html';
+    });
+
+    adminWorkspaceButton.addEventListener('click', () => {
+      window.location.href = 'admin-view.html';
+    });
+
+    workspaceTabs.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-tab-key]');
+      if (!button) {
+        return;
+      }
+
+      activateTab(button.dataset.tabKey);
+    });
+
+    window.addEventListener('hashchange', () => {
+      activateTab(getPageFromHash(), false);
+    });
+
+    window.addEventListener('resize', syncActiveFrameHeight);
+
+    async function initializeDashboardWorkspace() {
+      currentUser = await checkAuth();
+      if (!currentUser) {
+        return;
+      }
+
+      userEmail.textContent = currentUser.email ?? 'Unknown user';
+
+      const role = await resolveUserRole(currentUser);
+      if (role === 'admin') {
+        adminWorkspaceButton.hidden = false;
+      }
+
+      workspaceSubtitle.textContent = `Signed in as ${currentUser.email || 'user'}. Move between your daily tools without leaving the dashboard.`;
+
+      createWorkspaceShell();
+      initializeThresholdSettings();
+      listenToThresholdFieldChanges();
+      activateTab(getPageFromHash(), false);
+      showStatus('');
+    }
+
+    initializeDashboardWorkspace();
+  </script>
+</body>
+</html>

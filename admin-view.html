@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Workspace | Supabase Auth</title>
+  <link rel="icon" type="image/png" href="images/unipacklogo.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    body {
+      align-items: flex-start;
+      justify-content: center;
+      padding: 24px 0;
+    }
+
+    .admin-shell {
+      width: min(1440px, calc(100% - 32px));
+      padding: 0;
+    }
+
+    .workspace-card {
+      padding: 28px;
+    }
+
+    .workspace-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .workspace-eyebrow {
+      margin: 0 0 8px;
+      color: #93c5fd;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .workspace-subtitle {
+      margin: 0;
+      color: #cbd5e1;
+      max-width: 760px;
+      line-height: 1.5;
+    }
+
+    .workspace-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .workspace-actions button {
+      width: auto;
+      min-width: 150px;
+      margin-top: 0;
+      padding-inline: 18px;
+    }
+
+    .secondary-button {
+      background: rgba(148, 163, 184, 0.16);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      color: #f8fafc;
+    }
+
+    .secondary-button:hover {
+      background: rgba(148, 163, 184, 0.26);
+    }
+
+    .workspace-tabs {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding: 6px 0 8px;
+      margin: 24px 0 18px;
+      scrollbar-width: thin;
+    }
+
+    .workspace-tab {
+      width: auto;
+      margin-top: 0;
+      padding: 12px 18px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      color: #cbd5e1;
+      white-space: nowrap;
+    }
+
+    .workspace-tab:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .workspace-tab.active {
+      background: #2563eb;
+      border-color: transparent;
+      color: #fff;
+    }
+
+    .workspace-note {
+      margin: 0 0 18px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(37, 99, 235, 0.12);
+      border: 1px solid rgba(96, 165, 250, 0.22);
+      color: #dbeafe;
+      line-height: 1.5;
+    }
+
+    .workspace-panels {
+      min-height: 720px;
+    }
+
+    .workspace-panel {
+      display: none;
+    }
+
+    .workspace-panel.active {
+      display: block;
+    }
+
+    .workspace-frame-shell {
+      background: rgba(2, 6, 23, 0.28);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .workspace-loader {
+      padding: 18px 20px;
+      color: #cbd5e1;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+      background: rgba(15, 23, 42, 0.72);
+    }
+
+    .workspace-loader[hidden] {
+      display: none;
+    }
+
+    .workspace-frame {
+      width: 100%;
+      min-height: 720px;
+      border: 0;
+      display: block;
+      background: transparent;
+    }
+
+    @media (max-width: 900px) {
+      body {
+        padding: 16px 0;
+      }
+
+      .workspace-card {
+        padding: 22px;
+      }
+
+      .workspace-actions {
+        width: 100%;
+      }
+
+      .workspace-actions button {
+        flex: 1 1 180px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .workspace-card {
+        padding: 18px;
+      }
+
+      .workspace-panels,
+      .workspace-frame {
+        min-height: 620px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="container admin-shell">
+    <section class="card workspace-card">
+      <div class="header-logo">
+        <img src="images/unipacklogo.png" alt="UniPack Logo" class="logo" />
+      </div>
+
+      <div class="workspace-header">
+        <div>
+          <p class="workspace-eyebrow">Admin Workspace</p>
+          <h1>Operations Control Center</h1>
+          <p id="workspaceSubtitle" class="workspace-subtitle">Checking your admin access and preparing the workspace...</p>
+        </div>
+
+        <div class="workspace-actions">
+          <button id="backButton" type="button" class="secondary-button">Back to Dashboard</button>
+          <button id="openCurrentPageButton" type="button" class="secondary-button" disabled>Open Current Page</button>
+          <button id="logoutButton" type="button">Sign Out</button>
+        </div>
+      </div>
+
+      <div id="workspaceTabs" class="workspace-tabs" aria-label="Admin sections"></div>
+      <div id="workspaceNote" class="workspace-note">Choose a section to load it inside the admin workspace.</div>
+      <div id="workspacePanels" class="workspace-panels"></div>
+
+      <p id="status" class="message"></p>
+    </section>
+  </main>
+
+  <script type="module">
+    import { supabase } from './supabase.js';
+
+    const workspaceTabs = document.getElementById('workspaceTabs');
+    const workspacePanels = document.getElementById('workspacePanels');
+    const workspaceSubtitle = document.getElementById('workspaceSubtitle');
+    const workspaceNote = document.getElementById('workspaceNote');
+    const status = document.getElementById('status');
+    const backButton = document.getElementById('backButton');
+    const openCurrentPageButton = document.getElementById('openCurrentPageButton');
+    const logoutButton = document.getElementById('logoutButton');
+
+    const workspacePages = [
+      {
+        key: 'charts',
+        label: 'Charts',
+        src: 'charts.html',
+        loader: 'Loading company chart view...',
+        note: 'Company-wide staff filtering lives here. If charts still only show your own data, run the admin temperature policy SQL in this repo first.',
+      },
+      {
+        key: 'calendar',
+        label: 'Calendar',
+        src: 'calendar.html',
+        loader: 'Loading activity calendar...',
+        note: 'This panel uses the existing calendar page inside the workspace so admins can move around without leaving the control center.',
+      },
+      {
+        key: 'equipment',
+        label: 'Equipment Checks',
+        src: 'equipment.html',
+        loader: 'Loading equipment checklist...',
+        note: 'The live equipment checklist is embedded here with the extra page chrome removed so it behaves like one admin screen.',
+      },
+      {
+        key: 'sanitation',
+        label: 'Sanitation',
+        src: 'sanitation.html',
+        loader: 'Loading sanitation log...',
+        note: 'Use this panel to capture packhouse sanitation updates without leaving the admin workspace.',
+      },
+      {
+        key: 'faults',
+        label: 'Fault Reports',
+        src: 'equipment-faults.html',
+        loader: 'Loading fault reporting form...',
+        note: 'The equipment fault reporting flow stays fully live here, including image upload and WhatsApp alert handling.',
+      },
+      {
+        key: 'history',
+        label: 'Fault History',
+        src: 'equipment-history.html',
+        loader: 'Loading fault history...',
+        note: 'Fault history stays available in the same workspace so admins can report and review issues in one place.',
+      },
+    ];
+
+    const pageByKey = new Map(workspacePages.map((page) => [page.key, page]));
+    const pageBySrc = new Map(workspacePages.map((page) => [page.src, page]));
+
+    const EMBEDDED_STYLE_ID = 'admin-workspace-embedded-style';
+    const MIN_FRAME_HEIGHT = 620;
+
+    let currentUser = null;
+    let activeTabKey = null;
+    let activeHeightTimer = null;
+
+    function showStatus(message, isError = false) {
+      status.textContent = message;
+      status.className = isError ? 'message error' : 'message';
+    }
+
+    function getPageFromHash() {
+      const key = window.location.hash.replace('#', '');
+      return pageByKey.get(key) ? key : workspacePages[0].key;
+    }
+
+    function setWorkspaceSubtitle(message) {
+      workspaceSubtitle.textContent = message;
+    }
+
+    function createWorkspaceShell() {
+      workspaceTabs.innerHTML = workspacePages
+        .map(
+          (page) => `
+            <button
+              type="button"
+              class="workspace-tab"
+              data-tab-key="${page.key}"
+              aria-controls="panel-${page.key}"
+            >
+              ${page.label}
+            </button>
+          `
+        )
+        .join('');
+
+      workspacePanels.innerHTML = workspacePages
+        .map(
+          (page) => `
+            <section id="panel-${page.key}" class="workspace-panel" data-panel-key="${page.key}">
+              <div class="workspace-frame-shell">
+                <div class="workspace-loader">${page.loader}</div>
+                <iframe
+                  class="workspace-frame"
+                  data-frame-key="${page.key}"
+                  title="${page.label}"
+                  loading="lazy"
+                ></iframe>
+              </div>
+            </section>
+          `
+        )
+        .join('');
+    }
+
+    async function checkAuth() {
+      const { data, error } = await supabase.auth.getSession();
+      if (error || !data.session) {
+        window.location.href = 'index.html';
+        return null;
+      }
+      return data.session.user;
+    }
+
+    async function resolveUserRole(user) {
+      const metadataRole = user?.user_metadata?.role || user?.app_metadata?.role;
+
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (!error && profile?.role) {
+          return profile.role;
+        }
+      } catch (error) {
+        console.warn('Unable to load role from profiles table.', error);
+      }
+
+      return metadataRole || 'user';
+    }
+
+    function startHeightSync() {
+      if (activeHeightTimer) {
+        window.clearInterval(activeHeightTimer);
+      }
+
+      activeHeightTimer = window.setInterval(syncActiveFrameHeight, 700);
+      syncActiveFrameHeight();
+    }
+
+    function syncActiveFrameHeight() {
+      if (!activeTabKey) {
+        return;
+      }
+
+      const activeFrame = document.querySelector(`iframe[data-frame-key="${activeTabKey}"]`);
+      if (!activeFrame || !activeFrame.contentDocument) {
+        return;
+      }
+
+      try {
+        const doc = activeFrame.contentDocument;
+        const bodyHeight = doc.body ? doc.body.scrollHeight : 0;
+        const documentHeight = doc.documentElement ? doc.documentElement.scrollHeight : 0;
+        const nextHeight = Math.max(bodyHeight, documentHeight, MIN_FRAME_HEIGHT);
+
+        activeFrame.style.height = `${nextHeight}px`;
+      } catch (error) {
+        console.warn('Unable to resize embedded frame.', error);
+      }
+    }
+
+    function injectEmbeddedStyles(frame) {
+      const doc = frame.contentDocument;
+      if (!doc || doc.getElementById(EMBEDDED_STYLE_ID)) {
+        return;
+      }
+
+      const style = doc.createElement('style');
+      style.id = EMBEDDED_STYLE_ID;
+      style.textContent = `
+        body {
+          display: block !important;
+          min-height: auto !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          align-items: stretch !important;
+          justify-content: flex-start !important;
+          background: transparent !important;
+        }
+
+        main.container,
+        .container {
+          width: 100% !important;
+          max-width: none !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+
+        .card {
+          background: transparent !important;
+          border: 0 !important;
+          box-shadow: none !important;
+          margin: 0 !important;
+        }
+
+        .header-logo,
+        #logoutButton,
+        main.container > section.card > div[style*="margin-top: 20px"],
+        .dashboard-content > div[style*="margin-bottom: 20px"],
+        .dashboard-content > p:first-child {
+          display: none !important;
+        }
+      `;
+
+      doc.head.appendChild(style);
+    }
+
+    function handleEmbeddedNavigation(event) {
+      const clickable = event.target.closest('a[href], button[onclick]');
+      if (!clickable) {
+        return;
+      }
+
+      let targetPage = null;
+
+      if (clickable.matches('a[href]')) {
+        const href = clickable.getAttribute('href');
+        if (!href || href.startsWith('#') || href.startsWith('javascript:')) {
+          return;
+        }
+
+        try {
+          const targetUrl = new URL(href, window.location.href);
+          targetPage = targetUrl.pathname.split('/').pop();
+        } catch (error) {
+          return;
+        }
+      } else {
+        const onclickValue = clickable.getAttribute('onclick') || '';
+        const hrefMatch = onclickValue.match(/['"]([^'"]+\.html(?:\?[^'"]*)?)['"]/i);
+        if (hrefMatch) {
+          targetPage = hrefMatch[1].split('?')[0];
+        }
+      }
+
+      if (!targetPage) {
+        return;
+      }
+
+      const workspacePage = pageBySrc.get(targetPage);
+      if (workspacePage) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        activateTab(workspacePage.key);
+        return;
+      }
+
+      if (targetPage === 'dashboard.html') {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        window.location.href = 'dashboard.html';
+      }
+    }
+
+    function wireEmbeddedFrame(frame) {
+      const doc = frame.contentDocument;
+      if (!doc || doc.documentElement.dataset.adminWorkspaceBound === 'true') {
+        return;
+      }
+
+      doc.documentElement.dataset.adminWorkspaceBound = 'true';
+      doc.addEventListener('click', handleEmbeddedNavigation, true);
+    }
+
+    function getPanelElements(key) {
+      const panel = document.querySelector(`[data-panel-key="${key}"]`);
+      return {
+        panel,
+        frame: panel?.querySelector('iframe'),
+        loader: panel?.querySelector('.workspace-loader'),
+      };
+    }
+
+    function setActiveWorkspaceCopy(page) {
+      workspaceNote.textContent = page.note;
+      openCurrentPageButton.disabled = false;
+      openCurrentPageButton.textContent = `Open ${page.label}`;
+      openCurrentPageButton.onclick = () => {
+        window.location.href = page.src;
+      };
+    }
+
+    function markFrameLoaded(key) {
+      const { loader } = getPanelElements(key);
+      if (loader) {
+        loader.hidden = true;
+      }
+    }
+
+    function ensurePanelLoaded(key) {
+      const page = pageByKey.get(key);
+      const { frame } = getPanelElements(key);
+
+      if (!page || !frame || frame.dataset.loaded === 'true') {
+        return;
+      }
+
+      frame.addEventListener('load', () => {
+        try {
+          const currentPath = frame.contentWindow?.location?.pathname?.split('/').pop();
+          if (currentPath === 'index.html') {
+            window.location.href = 'index.html';
+            return;
+          }
+        } catch (error) {
+          console.warn('Unable to inspect embedded frame location.', error);
+        }
+
+        injectEmbeddedStyles(frame);
+        wireEmbeddedFrame(frame);
+        markFrameLoaded(key);
+        syncActiveFrameHeight();
+      });
+
+      frame.dataset.loaded = 'true';
+      frame.src = page.src;
+    }
+
+    function activateTab(key, updateHash = true) {
+      const page = pageByKey.get(key);
+      if (!page) {
+        return;
+      }
+
+      activeTabKey = key;
+
+      document.querySelectorAll('.workspace-tab').forEach((button) => {
+        button.classList.toggle('active', button.dataset.tabKey === key);
+      });
+
+      document.querySelectorAll('.workspace-panel').forEach((panel) => {
+        panel.classList.toggle('active', panel.dataset.panelKey === key);
+      });
+
+      setActiveWorkspaceCopy(page);
+      ensurePanelLoaded(key);
+      startHeightSync();
+
+      if (updateHash) {
+        history.replaceState(null, '', `#${key}`);
+      }
+    }
+
+    backButton.addEventListener('click', () => {
+      window.location.href = 'dashboard.html';
+    });
+
+    logoutButton.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = 'index.html';
+    });
+
+    workspaceTabs.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-tab-key]');
+      if (!button) {
+        return;
+      }
+
+      activateTab(button.dataset.tabKey);
+    });
+
+    window.addEventListener('hashchange', () => {
+      activateTab(getPageFromHash(), false);
+    });
+
+    window.addEventListener('resize', syncActiveFrameHeight);
+
+    async function initializeAdminWorkspace() {
+      currentUser = await checkAuth();
+      if (!currentUser) {
+        return;
+      }
+
+      const role = await resolveUserRole(currentUser);
+      if (role !== 'admin') {
+        showStatus('Admin access is required for this workspace. Redirecting...', true);
+        window.setTimeout(() => {
+          window.location.href = 'dashboard.html';
+        }, 1200);
+        return;
+      }
+
+      setWorkspaceSubtitle(`Signed in as ${currentUser.email || 'admin user'}. Open each section as a tab without leaving the admin workspace.`);
+      createWorkspaceShell();
+      activateTab(getPageFromHash(), false);
+      showStatus('');
+    }
+
+    initializeAdminWorkspace();
+  </script>
+</body>
+</html>

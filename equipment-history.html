@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equipment Fault History | Supabase Auth</title>
+  <link rel="icon" type="image/png" href="images/unipacklogo.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .history-container {
+      margin-top: 20px;
+    }
+    .filters {
+      margin-bottom: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .filters select {
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.95rem;
+    }
+    .filters button {
+      padding: 8px 14px;
+      background: #2f6fdb;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .record-card {
+      padding: 15px;
+      margin-bottom: 15px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+    .record-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .record-title {
+      font-weight: bold;
+      font-size: 1.05rem;
+    }
+    .severity-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      font-weight: bold;
+    }
+    .severity-critical { background: #ff4444; color: white; }
+    .severity-high { background: #ff8800; color: white; }
+    .severity-medium { background: #ffaa00; color: white; }
+    .severity-low { background: #44cc44; color: white; }
+    .record-details {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin: 10px 0;
+      font-size: 0.95rem;
+    }
+    .detail-item {
+      padding: 8px;
+      border-radius: 4px;
+    }
+    .detail-label {
+      font-weight: 600;
+      color: #666;
+      font-size: 0.85rem;
+    }
+    .record-description {
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 4px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+    .record-image {
+      margin-top: 10px;
+      max-width: 300px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #999;
+    }
+    .records-count {
+      margin-bottom: 15px;
+      font-size: 0.95rem;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="card">
+      <div class="header-logo">
+        <img src="images/unipacklogo.png" alt="UniPack Logo" class="logo" />
+      </div>
+      <h1>Equipment Fault History</h1>
+      <div class="dashboard-content">
+        <p>Welcome, <span id="userEmail">loading...</span></p>
+        
+        <div style="margin-bottom: 20px;">
+          <button onclick="window.location.href='dashboard.html'">Back to Dashboard</button>
+          <button onclick="window.location.href='equipment-faults.html'" style="margin-left: 10px;">Report New Fault</button>
+        </div>
+
+        <div class="filters">
+          <label for="severityFilter">Filter by Severity:</label>
+          <select id="severityFilter">
+            <option value="">All Severities</option>
+            <option value="Critical">Critical</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </select>
+          <button onclick="applyFilters()">Apply Filter</button>
+          <button onclick="resetFilters()" style="background: #666;">Reset</button>
+        </div>
+
+        <div id="recordsCount" class="records-count"></div>
+
+        <div id="historyContainer" class="history-container">
+          <div class="empty-state">Loading records...</div>
+        </div>
+
+        <button id="logoutButton" style="margin-top: 20px;">Sign Out</button>
+      </div>
+      <p id="status" class="message"></p>
+    </section>
+  </main>
+
+  <script type="module">
+    import { supabase } from './supabase.js';
+
+    const userEmail = document.getElementById('userEmail');
+    const logoutButton = document.getElementById('logoutButton');
+    const historyContainer = document.getElementById('historyContainer');
+    const recordsCount = document.getElementById('recordsCount');
+    const severityFilter = document.getElementById('severityFilter');
+
+    let allRecords = [];
+
+    async function loadUser() {
+      const { data, error } = await supabase.auth.getSession();
+      const user = data?.session?.user;
+      if (error || !user) {
+        window.location.href = 'index.html';
+        return;
+      }
+      userEmail.textContent = user.email ?? 'Unknown user';
+      loadEquipmentHistory();
+    }
+
+    async function loadEquipmentHistory() {
+      const { data, error } = await supabase.auth.getSession();
+      const user = data?.session?.user;
+
+      if (!user) {
+        historyContainer.innerHTML = '<div class="empty-state">Please log in first</div>';
+        return;
+      }
+
+      try {
+        const { data: records, error: fetchError } = await supabase
+          .from('faulty_equipment')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('date', { ascending: false })
+          .order('time', { ascending: false });
+
+        if (fetchError) {
+          historyContainer.innerHTML = `<div class="empty-state">Error loading records: ${fetchError.message}</div>`;
+          return;
+        }
+
+        allRecords = records || [];
+        renderRecords(allRecords);
+      } catch (error) {
+        historyContainer.innerHTML = `<div class="empty-state">Error: ${error.message}</div>`;
+      }
+    }
+
+    function renderRecords(records) {
+      if (records.length === 0) {
+        historyContainer.innerHTML = '<div class="empty-state">No equipment fault records found</div>';
+        recordsCount.textContent = '';
+        return;
+      }
+
+      recordsCount.textContent = `Showing ${records.length} record${records.length !== 1 ? 's' : ''}`;
+
+      historyContainer.innerHTML = records
+        .map((record) => renderRecord(record))
+        .join('');
+    }
+
+    function renderRecord(record) {
+      const severityClass = `severity-${record.severity?.toLowerCase() || 'low'}`;
+      const imageHtml = record.image_url 
+        ? `<img src="${record.image_url}" alt="Equipment damage" class="record-image" />`
+        : '';
+
+      return `
+        <div class="record-card">
+          <div class="record-header">
+            <div class="record-title">${escapeHtml(record.equipment_name)}</div>
+            <span class="severity-badge ${severityClass}">${record.severity || 'Unknown'}</span>
+          </div>
+          <div class="record-details">
+            <div class="detail-item">
+              <div class="detail-label">Date</div>
+              <div>${record.date}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Time</div>
+              <div>${record.time}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Status</div>
+              <div>${record.status || 'reported'}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Reported</div>
+              <div>${new Date(record.created_at).toLocaleDateString()}</div>
+            </div>
+          </div>
+          <div>
+            <strong>Description:</strong>
+            <div class="record-description">${escapeHtml(record.issue_description)}</div>
+          </div>
+          ${imageHtml}
+        </div>
+      `;
+    }
+
+    function escapeHtml(text) {
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+      };
+      return text.replace(/[&<>"']/g, (m) => map[m]);
+    }
+
+    window.applyFilters = function () {
+      const selectedSeverity = severityFilter.value;
+      if (selectedSeverity) {
+        const filtered = allRecords.filter((r) => r.severity === selectedSeverity);
+        renderRecords(filtered);
+      } else {
+        renderRecords(allRecords);
+      }
+    };
+
+    window.resetFilters = function () {
+      severityFilter.value = '';
+      renderRecords(allRecords);
+    };
+
+    logoutButton.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = 'index.html';
+    });
+
+    loadUser();
+  </script>
+</body>
+</html>

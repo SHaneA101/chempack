@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Faulty Equipment | Supabase Auth</title>
+  <link rel="icon" type="image/png" href="images/unipacklogo.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .image-preview {
+      margin-top: 10px;
+      max-width: 300px;
+      border-radius: 8px;
+      display: none;
+    }
+    .image-preview.show {
+      display: block;
+    }
+    .file-input-wrapper {
+      margin: 15px 0;
+    }
+    .severity-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      font-weight: bold;
+    }
+    .severity-critical { background: #ff4444; color: white; }
+    .severity-high { background: #ff8800; color: white; }
+    .severity-medium { background: #ffaa00; color: white; }
+    .severity-low { background: #44cc44; color: white; }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="card">
+      <div class="header-logo">
+        <img src="images/unipacklogo.png" alt="UniPack Logo" class="logo" />
+      </div>
+      <h1>Report Faulty Equipment</h1>
+      <div class="dashboard-content">
+        <p>Welcome, <span id="userEmail">loading...</span></p>
+        
+        <div style="margin-bottom: 20px;">
+          <button onclick="window.location.href='dashboard.html'">Back to Dashboard</button>
+          <button onclick="window.location.href='equipment-history.html'" style="margin-left: 10px;">View Fault History</button>
+          <button onclick="window.location.href='sanitation.html'" style="margin-left: 10px;">Sanitation Log</button>
+          <button onclick="window.location.href='calendar.html'" style="margin-left: 10px;">View Calendar</button>
+        </div>
+
+        <h2>Log Faulty or Damaged Equipment</h2>
+        <form id="faultyEquipmentForm">
+          <label for="equipmentDate">Date</label>
+          <input id="equipmentDate" type="date" required />
+
+          <label for="equipmentTime">Time</label>
+          <input id="equipmentTime" type="time" required />
+
+          <label for="equipmentName">Equipment Name</label>
+          <input id="equipmentName" type="text" placeholder="e.g., Conveyor Belt A, Sorter Machine 2" required />
+
+          <label for="severity">Severity Level</label>
+          <select id="severity" required>
+            <option value="">Select Severity</option>
+            <option value="Critical">Critical (Operations halted)</option>
+            <option value="High">High (Significant impact on operations)</option>
+            <option value="Medium">Medium (Moderate impact)</option>
+            <option value="Low">Low (Minor issue)</option>
+          </select>
+
+          <label for="issueDescription">Problem Description</label>
+          <textarea id="issueDescription" placeholder="Describe the issue, damage, and any symptoms observed" rows="4" required></textarea>
+
+          <div class="file-input-wrapper">
+            <label for="equipmentImage">Upload Photo (optional)</label>
+            <input id="equipmentImage" type="file" accept="image/*" />
+            <img id="imagePreview" class="image-preview" alt="Preview" />
+            <small>Tap to take a photo with your device camera</small>
+          </div>
+
+          <button type="submit">Report Equipment & Send Alert</button>
+        </form>
+        
+        <button id="logoutButton">Sign Out</button>
+      </div>
+      <p id="status" class="message"></p>
+    </section>
+  </main>
+
+  <script type="module">
+    import { supabase } from './supabase.js';
+
+    const userEmail = document.getElementById('userEmail');
+    const logoutButton = document.getElementById('logoutButton');
+    const status = document.getElementById('status');
+    const faultyEquipmentForm = document.getElementById('faultyEquipmentForm');
+    const equipmentDate = document.getElementById('equipmentDate');
+    const equipmentImage = document.getElementById('equipmentImage');
+    const imagePreview = document.getElementById('imagePreview');
+
+    const WHATSAPP_SERVER_URL = 'https://whatsapp-backend-rsug.onrender.com/send-whatsapp';
+    const STORAGE_BUCKET = 'equipment-images';
+
+    function getDateFromNow() {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    async function loadUser() {
+      const { data, error } = await supabase.auth.getSession();
+      const user = data?.session?.user;
+      if (error || !user) {
+        window.location.href = 'index.html';
+        return;
+      }
+      userEmail.textContent = user.email ?? 'Unknown user';
+    }
+
+    equipmentImage.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          imagePreview.src = e.target.result;
+          imagePreview.classList.add('show');
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    async function uploadImageToStorage(file, userId) {
+      if (!file) return null;
+
+      try {
+        const timestamp = Date.now();
+        const fileName = `${userId}/${timestamp}-${file.name}`;
+
+        const { data, error } = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .upload(fileName, file);
+
+        if (error) {
+          console.error('Storage upload error:', error);
+          return null;
+        }
+
+        const { data: urlData } = supabase.storage
+          .from(STORAGE_BUCKET)
+          .getPublicUrl(fileName);
+
+        return urlData?.publicUrl || null;
+      } catch (error) {
+        console.error('Image upload failed:', error);
+        return null;
+      }
+    }
+
+    function buildEquipmentAlertMessage({ date, time, equipmentName, severity, description, imageUrl }) {
+      let message = `⚠️ Faulty Equipment Report\n\n`;
+      message += `Severity: ${severity}\n`;
+      message += `Equipment: ${equipmentName}\n`;
+      message += `Date: ${date}\n`;
+      message += `Time: ${time}\n\n`;
+      message += `Description:\n${description}\n`;
+      if (imageUrl) {
+        message += `\n📷 Photo uploaded and attached.`;
+      }
+      message += `\n\n✓ Report logged and urgent action required.`;
+      return message;
+    }
+
+    async function sendWhatsAppNotification(message) {
+      try {
+        const response = await fetch(WHATSAPP_SERVER_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ message }),
+        });
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          return { success: false, error: payload.error || response.statusText };
+        }
+
+        return { success: true };
+      } catch (error) {
+        console.error('WhatsApp notification error:', error);
+        return { success: false, error: error.message || 'Request failed' };
+      }
+    }
+
+    equipmentDate.value = getDateFromNow();
+
+    faultyEquipmentForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      status.textContent = 'Processing equipment report...';
+      status.className = 'message';
+
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      const user = data?.session?.user;
+      if (sessionError || !user) {
+        status.textContent = 'Please log in first';
+        status.className = 'message error';
+        return;
+      }
+
+      const date = document.getElementById('equipmentDate').value;
+      const time = document.getElementById('equipmentTime').value;
+      const equipmentName = document.getElementById('equipmentName').value;
+      const severity = document.getElementById('severity').value;
+      const description = document.getElementById('issueDescription').value;
+      const imageFile = equipmentImage.files[0];
+
+      let imageUrl = null;
+      if (imageFile) {
+        status.textContent = 'Uploading image...';
+        imageUrl = await uploadImageToStorage(imageFile, user.id);
+        if (!imageUrl) {
+          status.textContent = 'Image upload failed. Continuing without photo...';
+        }
+      }
+
+      const { error: insertError } = await supabase.from('faulty_equipment').insert([
+        {
+          user_id: user.id,
+          date,
+          time,
+          equipment_name: equipmentName,
+          issue_description: description,
+          severity,
+          image_url: imageUrl,
+          status: 'reported',
+        },
+      ]);
+
+      if (insertError) {
+        status.textContent = insertError.message;
+        status.className = 'message error';
+        return;
+      }
+
+      status.textContent = 'Sending WhatsApp alert...';
+      const message = buildEquipmentAlertMessage({
+        date,
+        time,
+        equipmentName,
+        severity,
+        description,
+        imageUrl,
+      });
+
+      const { success, error: notifyError } = await sendWhatsAppNotification(message);
+      let notificationNote = '';
+      if (success) {
+        notificationNote = ' WhatsApp alert sent.';
+      } else {
+        notificationNote = ` WhatsApp alert failed: ${notifyError}`;
+        console.error('WhatsApp failure:', notifyError);
+      }
+
+      status.textContent = `Equipment report logged successfully!${notificationNote}`;
+      status.className = 'message success';
+      faultyEquipmentForm.reset();
+      imagePreview.classList.remove('show');
+      equipmentDate.value = getDateFromNow();
+    });
+
+    logoutButton.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = 'index.html';
+    });
+
+    loadUser();
+  </script>
+</body>
+</html>

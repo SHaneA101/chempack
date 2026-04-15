@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equipment Checks | Supabase Auth</title>
+  <link rel="icon" type="image/png" href="images/unipacklogo.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .equipment-container {
+      width: 100%;
+      max-width: 100%;
+      margin: 0 auto;
+      overflow-x: auto;
+      padding: 15px;
+    }
+
+    .checklist-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .date-selector {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .date-selector input,
+    .date-selector select {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(255, 255, 255, 0.06);
+      color: #f8fafc;
+      font-size: 0.9rem;
+    }
+
+    .equipment-section {
+      margin-bottom: 30px;
+    }
+
+    .equipment-section h2 {
+      color: #93c5fd;
+      margin-bottom: 15px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .equipment-table {
+      width: 100%;
+      min-width: 1300px;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      background: rgba(15, 23, 42, 0.96);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .equipment-table th,
+    .equipment-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .equipment-table th {
+      background: rgba(148, 163, 184, 0.1);
+      font-weight: bold;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .equipment-table .item-column {
+      min-width: 200px;
+      font-weight: 500;
+    }
+
+    .hour-column {
+      width: 80px;
+      text-align: center;
+    }
+
+    .status-select {
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(255, 255, 255, 0.06);
+      color: #f8fafc;
+      font-size: 0.8rem;
+    }
+
+    .status-select.ok {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: #10b981;
+    }
+
+    .status-select.issue {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: #ef4444;
+    }
+
+    .note-input {
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(255, 255, 255, 0.06);
+      color: #f8fafc;
+      font-size: 0.8rem;
+    }
+
+    .save-button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background 0.2s ease;
+      margin-top: 20px;
+    }
+
+    .save-button:hover {
+      background: #1d4ed8;
+    }
+
+    .save-button:disabled {
+      background: #6b7280;
+      cursor: not-allowed;
+    }
+
+    .status-legend {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.9rem;
+    }
+
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .legend-dot.ok {
+      background: #10b981;
+    }
+
+    .legend-dot.issue {
+      background: #ef4444;
+    }
+
+    .legend-dot.not-checked {
+      background: #6b7280;
+    }
+
+    @media (max-width: 768px) {
+      .equipment-table {
+        font-size: 0.8rem;
+      }
+
+      .equipment-table th,
+      .equipment-table td {
+        padding: 8px 4px;
+      }
+
+      .hour-column {
+        width: 60px;
+      }
+
+      .item-column {
+        min-width: 150px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="card">
+      <div class="header-logo">
+        <img src="images/unipacklogo.png" alt="UniPack Logo" class="logo" />
+      </div>
+      <h1>Equipment Checks</h1>
+
+      <div class="equipment-container">
+        <div class="checklist-header">
+          <div class="status-legend">
+            <div class="legend-item">
+              <div class="legend-dot ok"></div>
+              <span>OK</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot issue"></div>
+              <span>Issue</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot not-checked"></div>
+              <span>Not Checked</span>
+            </div>
+          </div>
+
+          <div class="date-selector">
+            <label for="checkDate">Date:</label>
+            <input id="checkDate" type="date" />
+          </div>
+        </div>
+
+        <div class="equipment-section">
+          <h2>Equipment Checks</h2>
+          <table class="equipment-table" id="equipmentTable">
+            <thead>
+              <tr>
+                <th class="item-column">Equipment Item</th>
+                <th class="hour-column">06:00</th>
+                <th class="hour-column">07:00</th>
+                <th class="hour-column">08:00</th>
+                <th class="hour-column">09:00</th>
+                <th class="hour-column">10:00</th>
+                <th class="hour-column">11:00</th>
+                <th class="hour-column">12:00</th>
+                <th class="hour-column">13:00</th>
+                <th class="hour-column">14:00</th>
+                <th class="hour-column">15:00</th>
+                <th class="hour-column">16:00</th>
+                <th class="hour-column">17:00</th>
+                <th class="hour-column">18:00</th>
+                <th class="hour-column">19:00</th>
+                <th class="hour-column">20:00</th>
+                <th class="hour-column">21:00</th>
+                <th class="hour-column">22:00</th>
+                <th class="note-column">Notes</th>
+              </tr>
+            </thead>
+            <tbody id="equipmentTableBody">
+              <!-- Equipment rows will be populated by JavaScript -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="equipment-section">
+          <h2>Quality and Cleaning</h2>
+          <table class="equipment-table" id="qualityTable">
+            <thead>
+              <tr>
+                <th class="item-column">Quality/Cleaning Item</th>
+                <th class="hour-column">06:00</th>
+                <th class="hour-column">07:00</th>
+                <th class="hour-column">08:00</th>
+                <th class="hour-column">09:00</th>
+                <th class="hour-column">10:00</th>
+                <th class="hour-column">11:00</th>
+                <th class="hour-column">12:00</th>
+                <th class="hour-column">13:00</th>
+                <th class="hour-column">14:00</th>
+                <th class="hour-column">15:00</th>
+                <th class="hour-column">16:00</th>
+                <th class="hour-column">17:00</th>
+                <th class="hour-column">18:00</th>
+                <th class="hour-column">19:00</th>
+                <th class="hour-column">20:00</th>
+                <th class="hour-column">21:00</th>
+                <th class="hour-column">22:00</th>
+                <th class="note-column">Notes</th>
+              </tr>
+            </thead>
+            <tbody id="qualityTableBody">
+              <!-- Quality rows will be populated by JavaScript -->
+            </tbody>
+          </table>
+        </div>
+
+        <button id="saveButton" class="save-button">Save All Checks</button>
+      </div>
+
+      <div style="margin-top: 20px;">
+        <button onclick="window.location.href='dashboard.html'" style="margin-right: 10px;">Back to Dashboard</button>
+        <button id="logoutButton">Sign Out</button>
+      </div>
+
+      <p id="status" class="message"></p>
+    </section>
+  </main>
+
+  <script type="module">
+    import { supabase } from './supabase.js';
+
+    const saveButton = document.getElementById('saveButton');
+    const logoutButton = document.getElementById('logoutButton');
+    const status = document.getElementById('status');
+    const checkDate = document.getElementById('checkDate');
+    const equipmentTableBody = document.getElementById('equipmentTableBody');
+    const qualityTableBody = document.getElementById('qualityTableBody');
+
+    // Equipment checklist data
+    const equipmentChecks = [
+      { id: "pumps-filters", item: "Check pumps and filters", kind: "status" },
+      { id: "flume-level", item: "Is the flume level correct?", kind: "status" },
+      { id: "chlorine-level", item: "Is the chlorine in the flume correct?", kind: "status" },
+      { id: "dosing-roller", item: "Dosing roller clean and turning?", kind: "status" },
+      { id: "elevator", item: "Does the elevator work?", kind: "status" },
+      { id: "hypercide", item: "Does the hypercide work?", kind: "status" },
+      { id: "flooder", item: "Do the flooder curtains work?", kind: "status" },
+      { id: "screen", item: "Does the dosing screen work?", kind: "status" },
+      { id: "chemicals", item: "Are chemical cylinders full?", kind: "status" },
+      { id: "air-knives", item: "Do the air knives blow properly?", kind: "status" },
+      { id: "tunnels", item: "Is fruit moving safely through the tunnels?", kind: "status" }
+    ];
+
+    const qualityChecks = [
+      { id: "dry-fruit", item: "Are the fruit dry at the tunnel exit?", kind: "status" },
+      { id: "wax-drum", item: "Is the wax drum clean and full?", kind: "status" },
+      { id: "wax-pump", item: "Does the wax pump operate without unusual noise or vibration?", kind: "status" },
+      { id: "wax-nozzle", item: "Does the wax nozzle function properly?", kind: "status" },
+      { id: "wax-solenoids", item: "Does the wax-solenoids function properly?", kind: "status" },
+      { id: "wax-bed", item: "Does the wax bed clean?", kind: "status" },
+      { id: "wax-coverage", item: "Is the wax coverage on the fruit adequate?", kind: "status" },
+      { id: "wax-quality", item: "Is the wax quality acceptable (no clumps, proper consistency)?", kind: "status" },
+      { id: "cleanliness", item: "Is the overall cleanliness of the equipment satisfactory?", kind: "status" }
+
+
+    ];
+
+    let currentChecks = {};
+
+    async function checkAuth() {
+      const { data, error } = await supabase.auth.getSession();
+      if (error || !data.session) {
+        window.location.href = 'index.html';
+        return null;
+      }
+      return data.session.user;
+    }
+
+    function createEquipmentRow(item, tableBody) {
+      const row = document.createElement('tr');
+
+      // Item name cell
+      const itemCell = document.createElement('td');
+      itemCell.className = 'item-column';
+      itemCell.textContent = item.item;
+      row.appendChild(itemCell);
+
+      // Hour cells (24 hours)
+      for (let hour = 0; hour < 24; hour++) {
+        const hourCell = document.createElement('td');
+        hourCell.className = 'hour-column';
+
+        const select = document.createElement('select');
+        select.className = 'status-select';
+        select.dataset.equipmentId = item.id;
+        select.dataset.hour = hour;
+
+        const options = [
+          { value: 'not_checked', text: '—' },
+          { value: 'ok', text: '✓' },
+          { value: 'issue', text: '✗' }
+        ];
+
+        options.forEach(option => {
+          const optionElement = document.createElement('option');
+          optionElement.value = option.value;
+          optionElement.textContent = option.text;
+          select.appendChild(optionElement);
+        });
+
+        select.addEventListener('change', (e) => {
+          updateStatusClass(e.target);
+          updateCurrentChecks();
+        });
+
+        hourCell.appendChild(select);
+        row.appendChild(hourCell);
+      }
+
+      // Notes cell
+      const noteCell = document.createElement('td');
+      noteCell.className = 'note-column';
+
+      const noteInput = document.createElement('input');
+      noteInput.type = 'text';
+      noteInput.className = 'note-input';
+      noteInput.placeholder = 'Optional note...';
+      noteInput.dataset.equipmentId = item.id;
+
+      noteInput.addEventListener('input', updateCurrentChecks);
+
+      noteCell.appendChild(noteInput);
+      row.appendChild(noteCell);
+
+      tableBody.appendChild(row);
+    }
+
+    function updateStatusClass(select) {
+      select.classList.remove('ok', 'issue');
+      if (select.value === 'ok') {
+        select.classList.add('ok');
+      } else if (select.value === 'issue') {
+        select.classList.add('issue');
+      }
+    }
+
+    function updateCurrentChecks() {
+      currentChecks = {};
+
+      // Collect equipment checks
+      document.querySelectorAll('#equipmentTableBody select').forEach(select => {
+        const equipmentId = select.dataset.equipmentId;
+        const hour = parseInt(select.dataset.hour);
+        const status = select.value;
+
+        if (!currentChecks[equipmentId]) {
+          currentChecks[equipmentId] = {};
+        }
+        currentChecks[equipmentId][hour] = { status, note: '' };
+      });
+
+      // Collect quality checks
+      document.querySelectorAll('#qualityTableBody select').forEach(select => {
+        const equipmentId = select.dataset.equipmentId;
+        const hour = parseInt(select.dataset.hour);
+        const status = select.value;
+
+        if (!currentChecks[equipmentId]) {
+          currentChecks[equipmentId] = {};
+        }
+        currentChecks[equipmentId][hour] = { status, note: '' };
+      });
+
+      // Collect notes
+      document.querySelectorAll('.note-input').forEach(input => {
+        const equipmentId = input.dataset.equipmentId;
+        const note = input.value;
+
+        if (currentChecks[equipmentId]) {
+          // Apply note to all hours for this equipment
+          Object.keys(currentChecks[equipmentId]).forEach(hour => {
+            currentChecks[equipmentId][hour].note = note;
+          });
+        }
+      });
+    }
+
+    async function loadExistingChecks() {
+      const user = await checkAuth();
+      if (!user) return;
+
+      const selectedDate = checkDate.value;
+      if (!selectedDate) return;
+
+      status.textContent = 'Loading existing checks...';
+
+      const { data, error } = await supabase
+        .from('equipment_checks')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('check_date', selectedDate);
+
+      if (error) {
+        console.error('Error loading checks:', error);
+        status.textContent = '';
+        return;
+      }
+
+      // Reset all selects to default
+      document.querySelectorAll('.status-select').forEach(select => {
+        select.value = 'not_checked';
+        updateStatusClass(select);
+      });
+
+      // Populate with existing data
+      data.forEach(check => {
+        const select = document.querySelector(`select[data-equipment-id="${check.equipment_id}"][data-hour="${check.check_hour}"]`);
+        if (select) {
+          select.value = check.status;
+          updateStatusClass(select);
+        }
+
+        // Set note if it exists
+        const noteInput = document.querySelector(`input[data-equipment-id="${check.equipment_id}"]`);
+        if (noteInput && check.note) {
+          noteInput.value = check.note;
+        }
+      });
+
+      status.textContent = '';
+    }
+
+    async function saveAllChecks() {
+      const user = await checkAuth();
+      if (!user) return;
+
+      const selectedDate = checkDate.value;
+      if (!selectedDate) {
+        status.textContent = 'Please select a date first.';
+        status.className = 'message error';
+        return;
+      }
+
+      saveButton.disabled = true;
+      saveButton.textContent = 'Saving...';
+      status.textContent = 'Saving equipment checks...';
+
+      // First, delete existing checks for this date
+      const { error: deleteError } = await supabase
+        .from('equipment_checks')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('check_date', selectedDate);
+
+      if (deleteError) {
+        console.error('Error deleting existing checks:', deleteError);
+      }
+
+      // Prepare new checks data
+      const checksToInsert = [];
+
+      // Combine equipment and quality checks
+      const allChecks = [...equipmentChecks, ...qualityChecks];
+
+      allChecks.forEach(item => {
+        for (let hour = 0; hour < 24; hour++) {
+          const checkData = currentChecks[item.id]?.[hour];
+          if (checkData && checkData.status !== 'not_checked') {
+            checksToInsert.push({
+              user_id: user.id,
+              check_date: selectedDate,
+              check_hour: hour,
+              equipment_id: item.id,
+              equipment_item: item.item,
+              status: checkData.status,
+              note: checkData.note || null,
+            });
+          }
+        }
+      });
+
+      if (checksToInsert.length === 0) {
+        status.textContent = 'No checks to save. Please select some statuses.';
+        status.className = 'message error';
+        saveButton.disabled = false;
+        saveButton.textContent = 'Save All Checks';
+        return;
+      }
+
+      const { error } = await supabase
+        .from('equipment_checks')
+        .insert(checksToInsert);
+
+      if (error) {
+        status.textContent = error.message;
+        status.className = 'message error';
+      } else {
+        status.textContent = `Successfully saved ${checksToInsert.length} equipment checks!`;
+        status.className = 'message success';
+      }
+
+      saveButton.disabled = false;
+      saveButton.textContent = 'Save All Checks';
+    }
+
+    // Initialize
+    checkAuth().then(() => {
+      // Set default date to today
+      checkDate.value = new Date().toISOString().split('T')[0];
+
+      // Create table rows
+      equipmentChecks.forEach(item => createEquipmentRow(item, equipmentTableBody));
+      qualityChecks.forEach(item => createEquipmentRow(item, qualityTableBody));
+
+      // Load existing data
+      loadExistingChecks();
+    });
+
+    // Event listeners
+    checkDate.addEventListener('change', loadExistingChecks);
+    saveButton.addEventListener('click', saveAllChecks);
+
+    logoutButton.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = 'index.html';
+    });
+  </script>
+</body>
+</html>

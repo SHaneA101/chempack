@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Historical Chart Data | Supabase Auth</title>
+  <link rel="icon" type="image/png" href="images/unipacklogo.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .chart-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .chart-card {
+      background: rgba(15, 23, 42, 0.96);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .chart-header h2 {
+      margin: 0;
+    }
+
+    .chart-scope {
+      margin: 8px 0 0;
+      color: #cbd5e1;
+      font-size: 0.95rem;
+    }
+
+    .chart-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .chart-controls label,
+    .admin-chart-controls label {
+      font-weight: 600;
+      color: #e2e8f0;
+      font-size: 0.9rem;
+    }
+
+    .chart-controls label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .chart-controls select,
+    .admin-chart-controls select {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(255, 255, 255, 0.06);
+      color: #f8fafc;
+      font-size: 0.9rem;
+    }
+
+    .chart-controls select {
+      min-width: 120px;
+    }
+
+    .admin-chart-controls {
+      margin-bottom: 18px;
+      padding: 14px 16px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 10px;
+      background: rgba(30, 41, 59, 0.75);
+    }
+
+    .admin-chart-controls[hidden] {
+      display: none;
+    }
+
+    .admin-chart-controls label {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .admin-chart-controls select {
+      min-width: min(100%, 320px);
+    }
+
+    .chart-wrapper {
+      position: relative;
+      height: 400px;
+      margin-bottom: 20px;
+    }
+
+    #dataTableContainer {
+      overflow-x: auto;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    .data-table th,
+    .data-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .data-table th {
+      background: rgba(148, 163, 184, 0.1);
+      font-weight: bold;
+    }
+
+    .data-table tr:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .temp-value {
+      font-weight: bold;
+      color: #93c5fd;
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 40px;
+      color: #94a3b8;
+      font-style: italic;
+    }
+
+    @media (max-width: 720px) {
+      .chart-wrapper {
+        height: 320px;
+      }
+
+      .chart-controls label {
+        width: 100%;
+        justify-content: space-between;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="card">
+      <div class="header-logo">
+        <img src="images/unipacklogo.png" alt="UniPack Logo" class="logo" />
+      </div>
+      <h1>Historical Temperature Data</h1>
+
+      <div class="chart-container">
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <h2>Temperature Trends</h2>
+              <p id="chartScope" class="chart-scope">Loading chart scope...</p>
+            </div>
+
+            <div class="chart-controls">
+              <label for="chartType">
+                Chart
+                <select id="chartType">
+                  <option value="line">Line Chart</option>
+                  <option value="bar">Bar Chart</option>
+                </select>
+              </label>
+
+              <label for="timeRange">
+                Range
+                <select id="timeRange">
+                  <option value="7">Last 7 days</option>
+                  <option value="30">Last 30 days</option>
+                  <option value="90">Last 90 days</option>
+                  <option value="all">All time</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div id="adminChartControls" class="admin-chart-controls" hidden>
+            <label for="staffFilter">Filter by Staff Member</label>
+            <select id="staffFilter">
+              <option value="all">Company-wide (All Staff)</option>
+            </select>
+          </div>
+
+          <div class="chart-wrapper">
+            <canvas id="temperatureChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h2>Recent Temperature Records</h2>
+          <div id="dataTableContainer">
+            <table class="data-table">
+              <thead id="dataTableHead">
+                <tr>
+                  <th>Date</th>
+                  <th>Time</th>
+                  <th>Day</th>
+                  <th>Flumes (&deg;C)</th>
+                  <th>Flooder (&deg;C)</th>
+                  <th>Drying (&deg;C)</th>
+                  <th>Wax (&deg;C)</th>
+                </tr>
+              </thead>
+              <tbody id="dataTableBody">
+                <tr>
+                  <td colspan="7" class="no-data">Loading data...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px;">
+        <button onclick="window.location.href='dashboard.html'" style="margin-right: 10px;">Back to Dashboard</button>
+        <button onclick="window.location.href='calendar.html'" style="margin-right: 10px;">View Calendar</button>
+        <button id="logoutButton">Sign Out</button>
+      </div>
+
+      <p id="status" class="message"></p>
+    </section>
+  </main>
+
+  <script type="module">
+    import { supabase } from './supabase.js';
+
+    const logoutButton = document.getElementById('logoutButton');
+    const status = document.getElementById('status');
+    const chartTypeSelect = document.getElementById('chartType');
+    const timeRangeSelect = document.getElementById('timeRange');
+    const adminChartControls = document.getElementById('adminChartControls');
+    const staffFilter = document.getElementById('staffFilter');
+    const chartScope = document.getElementById('chartScope');
+    const dataTableHead = document.getElementById('dataTableHead');
+    const dataTableBody = document.getElementById('dataTableBody');
+
+    let currentUser = null;
+    let isAdmin = false;
+    let temperatureChart = null;
+    let chartData = [];
+    let userDirectory = new Map();
+
+    function showStatus(message, isError = false) {
+      status.textContent = message;
+      status.className = isError ? 'message error' : 'message';
+    }
+
+    function showStaffColumn() {
+      return isAdmin;
+    }
+
+    function getNoDataColSpan() {
+      return showStaffColumn() ? 8 : 7;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatDate(dateValue) {
+      const parsedDate = new Date(`${dateValue}T00:00:00`);
+      return Number.isNaN(parsedDate.getTime()) ? dateValue : parsedDate.toLocaleDateString();
+    }
+
+    function formatDay(dateValue) {
+      const parsedDate = new Date(`${dateValue}T00:00:00`);
+      return Number.isNaN(parsedDate.getTime())
+        ? ''
+        : parsedDate.toLocaleDateString('en-US', { weekday: 'long' });
+    }
+
+    function formatTemperature(value) {
+      const numericValue = Number(value);
+      return Number.isFinite(numericValue) ? `${numericValue.toFixed(1)}\u00B0C` : '-';
+    }
+
+    function formatUserLabel(userId) {
+      if (userDirectory.has(userId)) {
+        return userDirectory.get(userId);
+      }
+
+      if (userId === currentUser?.id) {
+        return currentUser.email || 'You';
+      }
+
+      return userId ? `User ${userId.slice(0, 8)}` : 'Unknown user';
+    }
+
+    function updateChartScope() {
+      if (!isAdmin) {
+        chartScope.textContent = 'Showing your temperature records.';
+        return;
+      }
+
+      if (staffFilter.value === 'all') {
+        chartScope.textContent = 'Showing company-wide temperature records for all staff.';
+        return;
+      }
+
+      chartScope.textContent = `Showing temperature records for ${formatUserLabel(staffFilter.value)}.`;
+    }
+
+    function renderTableHead() {
+      const headers = ['Date', 'Time', 'Day'];
+
+      if (showStaffColumn()) {
+        headers.push('Staff');
+      }
+
+      headers.push('Flumes (&deg;C)', 'Flooder (&deg;C)', 'Drying (&deg;C)', 'Wax (&deg;C)');
+
+      dataTableHead.innerHTML = `<tr>${headers.map((header) => `<th>${header}</th>`).join('')}</tr>`;
+    }
+
+    function buildChartLabel(item) {
+      const baseLabel = `${item.date} ${item.time}`;
+
+      if (isAdmin && staffFilter.value === 'all') {
+        return `${baseLabel} - ${formatUserLabel(item.user_id)}`;
+      }
+
+      return baseLabel;
+    }
+
+    async function checkAuth() {
+      const { data, error } = await supabase.auth.getSession();
+      if (error || !data.session) {
+        window.location.href = 'index.html';
+        return null;
+      }
+      return data.session.user;
+    }
+
+    async function resolveUserRole(user) {
+      const metadataRole = user?.user_metadata?.role || user?.app_metadata?.role;
+
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (!error && profile?.role) {
+          return profile.role;
+        }
+      } catch (error) {
+        console.warn('Unable to load role from profiles table.', error);
+      }
+
+      return metadataRole || 'user';
+    }
+
+    async function buildUserDirectory(userIds) {
+      const uniqueIds = [...new Set(userIds.filter(Boolean))];
+      const directory = new Map();
+
+      if (currentUser?.id) {
+        directory.set(currentUser.id, currentUser.email || 'You');
+      }
+
+      if (uniqueIds.length === 0) {
+        return directory;
+      }
+
+      const sources = [
+        { table: 'logs', select: 'user_id, email', idField: 'user_id' },
+        { table: 'profiles', select: 'id, email', idField: 'id' },
+      ];
+
+      for (const source of sources) {
+        try {
+          const { data, error } = await supabase
+            .from(source.table)
+            .select(source.select)
+            .in(source.idField, uniqueIds);
+
+          if (error || !Array.isArray(data)) {
+            continue;
+          }
+
+          data.forEach((row) => {
+            const id = row[source.idField];
+            const email = typeof row.email === 'string' ? row.email.trim() : '';
+
+            if (id && email && !directory.has(id)) {
+              directory.set(id, email);
+            }
+          });
+        } catch (error) {
+          console.warn(`Unable to read ${source.table} for chart labels.`, error);
+        }
+      }
+
+      return directory;
+    }
+
+    async function populateStaffDropdown() {
+      const previousValue = staffFilter.value || 'all';
+
+      staffFilter.innerHTML = '<option value="all">Company-wide (All Staff)</option>';
+
+      const { data, error } = await supabase
+        .from('temperature_checks')
+        .select('user_id')
+        .order('user_id', { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      const userIds = [...new Set((data || []).map((item) => item.user_id).filter(Boolean))];
+      userDirectory = await buildUserDirectory(userIds);
+
+      userIds.forEach((userId) => {
+        const option = document.createElement('option');
+        option.value = userId;
+        option.textContent = formatUserLabel(userId);
+        staffFilter.appendChild(option);
+      });
+
+      if (userIds.includes(previousValue)) {
+        staffFilter.value = previousValue;
+      }
+    }
+
+    async function loadTemperatureData() {
+      if (!currentUser) {
+        return;
+      }
+
+      showStatus('Loading temperature data...');
+      updateChartScope();
+
+      const timeRange = timeRangeSelect.value;
+      let query = supabase
+        .from('temperature_checks')
+        .select('*')
+        .order('date', { ascending: true })
+        .order('time', { ascending: true });
+
+      if (!isAdmin || staffFilter.value !== 'all') {
+        query = query.eq('user_id', isAdmin ? staffFilter.value : currentUser.id);
+      }
+
+      if (timeRange !== 'all') {
+        const days = Number.parseInt(timeRange, 10);
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+        query = query.gte('date', startDate.toISOString().split('T')[0]);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        chartData = [];
+        renderChart();
+        renderDataTable();
+        showStatus(
+          `${error.message}. If admin company-wide data still only shows your own records, run the admin temperature policy SQL in this repo.`,
+          true
+        );
+        return;
+      }
+
+      chartData = data || [];
+      renderChart();
+      renderDataTable();
+      showStatus(chartData.length === 0 ? 'No temperature data found for this selection.' : '');
+    }
+
+    function renderChart() {
+      const ctx = document.getElementById('temperatureChart').getContext('2d');
+
+      if (temperatureChart) {
+        temperatureChart.destroy();
+      }
+
+      const chartType = chartTypeSelect.value;
+      const title = isAdmin && staffFilter.value === 'all'
+        ? 'Company-wide Temperature Readings Over Time'
+        : 'Temperature Readings Over Time';
+
+      temperatureChart = new Chart(ctx, {
+        type: chartType,
+        data: {
+          labels: chartData.map((item) => buildChartLabel(item)),
+          datasets: [
+            {
+              label: 'Flumes',
+              data: chartData.map((item) => Number(item.flumes_temp)),
+              borderColor: '#3b82f6',
+              backgroundColor: 'rgba(59, 130, 246, 0.14)',
+              tension: 0.4,
+            },
+            {
+              label: 'Flooder',
+              data: chartData.map((item) => Number(item.flooder_temp)),
+              borderColor: '#ef4444',
+              backgroundColor: 'rgba(239, 68, 68, 0.14)',
+              tension: 0.4,
+            },
+            {
+              label: 'Drying Tunnel',
+              data: chartData.map((item) => Number(item.drying_tunnel_temp)),
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.14)',
+              tension: 0.4,
+            },
+            {
+              label: 'Wax Tunnel',
+              data: chartData.map((item) => Number(item.wax_tunnel_temp)),
+              borderColor: '#f59e0b',
+              backgroundColor: 'rgba(245, 158, 11, 0.14)',
+              tension: 0.4,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+            },
+            title: {
+              display: true,
+              text: title,
+            },
+          },
+          scales: {
+            x: {
+              display: true,
+              title: {
+                display: true,
+                text: 'Date and Time',
+              },
+            },
+            y: {
+              display: true,
+              title: {
+                display: true,
+                text: 'Temperature (\u00B0C)',
+              },
+            },
+          },
+        },
+      });
+    }
+
+    function renderDataTable() {
+      renderTableHead();
+
+      if (chartData.length === 0) {
+        dataTableBody.innerHTML = `<tr><td colspan="${getNoDataColSpan()}" class="no-data">No temperature data found for this selection.</td></tr>`;
+        return;
+      }
+
+      dataTableBody.innerHTML = chartData
+        .slice(-20)
+        .reverse()
+        .map((item) => {
+          const staffCell = showStaffColumn()
+            ? `<td>${escapeHtml(formatUserLabel(item.user_id))}</td>`
+            : '';
+
+          return `
+            <tr>
+              <td>${formatDate(item.date)}</td>
+              <td>${escapeHtml(item.time)}</td>
+              <td>${formatDay(item.date)}</td>
+              ${staffCell}
+              <td><span class="temp-value">${formatTemperature(item.flumes_temp)}</span></td>
+              <td><span class="temp-value">${formatTemperature(item.flooder_temp)}</span></td>
+              <td><span class="temp-value">${formatTemperature(item.drying_tunnel_temp)}</span></td>
+              <td><span class="temp-value">${formatTemperature(item.wax_tunnel_temp)}</span></td>
+            </tr>
+          `;
+        })
+        .join('');
+    }
+
+    chartTypeSelect.addEventListener('change', renderChart);
+    timeRangeSelect.addEventListener('change', loadTemperatureData);
+    staffFilter.addEventListener('change', loadTemperatureData);
+
+    logoutButton.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = 'index.html';
+    });
+
+    async function initializePage() {
+      currentUser = await checkAuth();
+      if (!currentUser) {
+        return;
+      }
+
+      isAdmin = (await resolveUserRole(currentUser)) === 'admin';
+
+      if (isAdmin) {
+        adminChartControls.hidden = false;
+
+        try {
+          await populateStaffDropdown();
+        } catch (error) {
+          showStatus(
+            `${error.message}. Admin filters need the admin temperature policy SQL in this repo before company-wide charts can load.`,
+            true
+          );
+        }
+      } else {
+        userDirectory.set(currentUser.id, currentUser.email || 'You');
+      }
+
+      updateChartScope();
+      renderTableHead();
+      await loadTemperatureData();
+    }
+
+    initializePage();
+  </script>
+</body>
+</html>
