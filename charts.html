@@ -201,6 +201,40 @@
           </div>
         </div>
 
+        <!-- New Chemical PPM Chart -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <h2>Chemical Levels (PPM)</h2>
+              <p id="chemicalChartScope" class="chart-scope">Loading chemical chart scope...</p>
+            </div>
+
+            <div class="chart-controls">
+              <label for="chemicalChartType">
+                Chart
+                <select id="chemicalChartType">
+                  <option value="line">Line Chart</option>
+                  <option value="bar">Bar Chart</option>
+                </select>
+              </label>
+
+              <label for="chemicalTimeRange">
+                Range
+                <select id="chemicalTimeRange">
+                  <option value="7">Last 7 days</option>
+                  <option value="30">Last 30 days</option>
+                  <option value="90">Last 90 days</option>
+                  <option value="all">All time</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div class="chart-wrapper">
+            <canvas id="chemicalChart"></canvas>
+          </div>
+        </div>
+
         <div class="chart-card">
           <h2>Recent Temperature Records</h2>
           <div id="dataTableContainer">
@@ -248,10 +282,14 @@
     const chartScope = document.getElementById('chartScope');
     const dataTableHead = document.getElementById('dataTableHead');
     const dataTableBody = document.getElementById('dataTableBody');
+    const chemicalChartScope = document.getElementById('chemicalChartScope');
+    const chemicalChartTypeSelect = document.getElementById('chemicalChartType');
+    const chemicalTimeRangeSelect = document.getElementById('chemicalTimeRange');
 
     let currentUser = null;
     let isAdmin = false;
     let temperatureChart = null;
+    let chemicalChart = null;
     let chartData = [];
     let userDirectory = new Map();
 
@@ -307,17 +345,14 @@
     }
 
     function updateChartScope() {
-      if (!isAdmin) {
-        chartScope.textContent = 'Showing your temperature records.';
-        return;
-      }
+      const scopeText = !isAdmin 
+        ? 'your records.'
+        : staffFilter.value === 'all' 
+          ? 'company-wide records for all staff.'
+          : `records for ${formatUserLabel(staffFilter.value)}.`;
 
-      if (staffFilter.value === 'all') {
-        chartScope.textContent = 'Showing company-wide temperature records for all staff.';
-        return;
-      }
-
-      chartScope.textContent = `Showing temperature records for ${formatUserLabel(staffFilter.value)}.`;
+      chartScope.textContent = `Showing temperature ${scopeText}`;
+      chemicalChartScope.textContent = `Showing chemical levels ${scopeText}`;
     }
 
     function renderTableHead() {
@@ -485,8 +520,74 @@
 
       chartData = data || [];
       renderChart();
+      renderChemicalChart();
       renderDataTable();
       showStatus(chartData.length === 0 ? 'No temperature data found for this selection.' : '');
+    }
+
+function renderChemicalChart() {
+      const ctx = document.getElementById('chemicalChart').getContext('2d');
+
+      if (chemicalChart) {
+        chemicalChart.destroy();
+      }
+
+      const chartType = chemicalChartTypeSelect.value;
+      const title = isAdmin && staffFilter.value === 'all'
+        ? 'Company-wide Chemical Levels (PPM) Over Time'
+        : 'Chemical Levels (PPM) Over Time';
+
+      chemicalChart = new Chart(ctx, {
+        type: chartType,
+        data: {
+          labels: chartData.map((item) => buildChartLabel(item)),
+          datasets: [
+            {
+              label: 'Citrocide',
+              data: chartData.map((item) => Number(item.citrocide_level ?? NaN)),
+              borderColor: '#8b5cf6',
+              backgroundColor: 'rgba(139, 92, 246, 0.14)',
+              tension: 0.4,
+            },
+            {
+              label: 'Chlorine',
+              data: chartData.map((item) => Number(item.chlorine_level ?? NaN)),
+              borderColor: '#f97316',
+              backgroundColor: 'rgba(249, 115, 22, 0.14)',
+              tension: 0.4,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+            },
+            title: {
+              display: true,
+              text: title,
+            },
+          },
+          scales: {
+            x: {
+              display: true,
+              title: {
+                display: true,
+                text: 'Date and Time',
+              },
+            },
+            y: {
+              display: true,
+              title: {
+                display: true,
+                text: 'PPM',
+              },
+            },
+          },
+        },
+      });
     }
 
     function renderChart() {
@@ -600,8 +701,19 @@
         .join('');
     }
 
-    chartTypeSelect.addEventListener('change', renderChart);
+    chartTypeSelect.addEventListener('change', () => {
+      chemicalChartTypeSelect.value = chartTypeSelect.value;
+      renderChart();
+    });
+    chemicalChartTypeSelect.addEventListener('change', () => {
+      chartTypeSelect.value = chemicalChartTypeSelect.value;
+      renderChart();
+    });
     timeRangeSelect.addEventListener('change', loadTemperatureData);
+    chemicalTimeRangeSelect.addEventListener('change', () => {
+      timeRangeSelect.value = chemicalTimeRangeSelect.value;
+      loadTemperatureData();
+    });
     staffFilter.addEventListener('change', loadTemperatureData);
 
     logoutButton.addEventListener('click', async () => {
